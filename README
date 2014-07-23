@@ -19,7 +19,7 @@ decompile as a parameter. By default, triad will try to find the main function
 of the given file and start decompiling from there.
 
 Sometimes ELFs have all symbols stripped, so triad will be unable to find main.
-In such a scenario, the user may simply pecify a starting address as the second
+In such a scenario, the user may simply specify a starting address as the second
 command line parameter. But, an incorrect starting address will likely result in
 incorrect decompilation or no decompilation.
 
