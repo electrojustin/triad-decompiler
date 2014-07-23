@@ -1,0 +1,78 @@
+Triad decompiler version 0.1 Alpha Test.
+
+Not intended to be used for copyright infringement or other illegal activities.
+
+What is triad:
+TRiad Is A Decompiler
+Triad is a tiny, free and open source, libdisasm based x86 decompiler that will take in ELF files
+as input and spit out pseudo-C.
+
+Installation:
+First, it will be necessary to build triad. "make triad" should suffice.
+After its components are built, the triad binary will be placed in the build 
+directory. To copy the binary into /usr/bin, simply use "sudo make install."
+
+Usage: triad <file name> <(optional)start address>
+
+Simply run the triad binary from the command line and specify an ELF to 
+decompile as a parameter. By default, triad will try to find the main function 
+of the given file and start decompiling from there.
+
+Sometimes ELFs have all symbols stripped, so triad will be unable to find main.
+In such a scenario, the user may simply pecify a starting address as the second
+command line parameter. But, an incorrect starting address will likely result in
+incorrect decompilation or no decompilation.
+
+Limitations PLEASE READ BEFORE SUBMITTING A BUG REPORT:
+First, triad is really only meant for decompiling x86 NOT x86_64. This is 
+because libdisasm only works with x86. Once again, 64 bit applications will
+NOT be decompiled properly, if at all (will most likely just trigger a
+segfault).
+
+The triad decompiler is still very much an alpha. The project is nowhere near
+completion and as such is missing some critical features, contains numerous
+bugs, has several odd quirks, and has a propensity for segfaulting.
+
+Missing features include support for switch decompilation and full support for
+strings and statically allocated arrays (dynamically allocated arrays will
+actually probably work to one degree or another, but the syntax will be
+most unusual e.g. *(char*)(eax + (12)) = 96 instead of array[12] = 'a').
+Struct analysis will be a long ways a way as well, and unions may never work
+properly.
+
+The only supported binary format currently supported is the Executable and
+Linkable Format (ELF), commonly used on UNIX like systems, such as LINUX.
+
+Control flow decompilation should be mostly correct, but it will look funky.
+While loops will end up as do-while loops inside of if statements, which is
+semantically equivalent but not exactly what the original source would have
+looked like. Continues, and forward gotos inside of conditional
+statements might wind up as if-else statements. Once again, semantically
+equivalent but different from original source.
+
+Optimization and computed jumps will probably cause a program to be decompiled
+completely incorrectly.
+
+Triad was designed and tested for programs compiled using gcc.
+
+It is important to understand that the generated source code will NEVER be
+exactly the original source (unless the program was compiled with debug 
+symbols, of course).
+
+If triad segfaults on you, feel free to tell me. Include a stack trace and a
+description of the conditions that triggered the crash if at all possible.
+For obvious reasons, it is quite important that triad crash as little as
+possible.
+
+"Hacking"/Modding notes:
+I will be honest, the code is a bit of a mess. It is a short mess,
+probably less than 2 KLOC, but the amount of pointer arithmetic and number of
+globals used is not for the faint of heart.
+
+That said, feel free to "hack" in features! The license is just MIT, so do 
+whatever. Feel free to contact me if you have any questions about how the code
+works or think you have a cool feature that should be merged into the codebase.
+I tried to document the source, but I'm sure certain lines will leave many 
+programmers confused and/or horrified.
+
+My email is just electrojustin@gmail.com

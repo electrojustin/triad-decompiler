@@ -1,0 +1,26 @@
+++++CONTROL FLOW++++
+{
+
+Add Switches - NEXT RELEASE
+
+}
+
+++++POINTERS AND ARRAYS++++
+{
+
+Add support for datastructures and arrays - POSSIBLY NEXT RELEASE
+
+}
+
+MISC
+{
+
+Fix the spider disassembler - NEXT RELEASE
+
+Perhaps add an automatic tabbing system to improve readability?
+
+MORE DOCUMENTATION
+
+CODE CLEANUPS
+
+}
