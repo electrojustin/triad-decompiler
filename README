@@ -4,8 +4,8 @@ Not intended to be used for copyright infringement or other illegal activities.
 
 What is triad:
 TRiad Is A Decompiler
-Triad is a tiny, free and open source, libdisasm based x86 decompiler that will take in ELF files
-as input and spit out pseudo-C.
+Triad is a tiny, free and open source, libdisasm based x86 decompiler that will
+take in ELF files as input and spit out pseudo-C.
 
 Installation:
 First, it will be necessary to build triad. "make triad" should suffice.
