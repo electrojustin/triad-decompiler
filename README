@@ -8,7 +8,8 @@ Triad is a tiny, free and open source, libdisasm based x86 decompiler that will
 take in ELF files as input and spit out pseudo-C.
 
 Installation:
-Triad requires libdisasm to be installed first. https://sourceforge.net/projects/bastard/files/libdisasm/
+Triad requires libdisasm to be installed first.
+https://sourceforge.net/projects/bastard/files/libdisasm/
 
 First, it will be necessary to build triad. "make triad" should suffice.
 After its components are built, the triad binary will be placed in the build 
