@@ -32,7 +32,7 @@
 
 char test_conditions [14] [3] = {"<\0\0", ">=\0", "!=\0", "==\0", "<=\0", ">\0\0", "<\0\0", ">\0\0", "\0\0\0", "\0\0\0", "<\0\0", ">=\0", "<=\0", ">\0\0"};
 
-void translate_insn (x86_insn_t instruction, x86_insn_t next_instruction)
+void translate_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_block* parent)
 {
 	char* line = malloc (128);
 	char* name = NULL;
@@ -176,8 +176,10 @@ void translate_insn (x86_insn_t instruction, x86_insn_t next_instruction)
 			//Instruction after a compare or a test is usually a conditional jump
 			target_addr = relative_insn (&next_instruction, index_to_addr (next_instruction.addr) + next_instruction.size); 
 			temp = add_var (instruction.operands->op);
-			if (target_addr > index_to_addr (next_instruction.addr))
-				sprintf (next_line, "\nif (%s %s 0)\n{\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72]); //The conditional jumps start "jump if below" which has an opcode of 0x72
+			if (parent->flags & IS_WHILE)
+				sprintf (next_line, "\nwhile (%s %s 0)\n{\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72]);
+			else if (target_addr > index_to_addr (next_instruction.addr))
+				sprintf (next_line, "\nif (%s %s 0)\n{\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72]); //The conditional jumps start with "jump if below," which has an opcode of 0x72
 			else
 				sprintf (next_line, "} while (%s %s 0);\n\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72]);
 			break;
@@ -185,7 +187,9 @@ void translate_insn (x86_insn_t instruction, x86_insn_t next_instruction)
 			temp = add_var (instruction.operands->op);
 			temp2 = add_var (instruction.operands->next->op);
 			target_addr = relative_insn (&next_instruction, index_to_addr (next_instruction.addr) + next_instruction.size);
-			if (target_addr > index_to_addr (next_instruction.addr))
+			if (parent->flags & IS_WHILE)
+				sprintf (next_line, "\nwhile (%s %s %s)\n{\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72], temp2->name);
+			else if (target_addr > index_to_addr (next_instruction.addr))
 				sprintf (next_line, "\nif (%s %s %s)\n{\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72], temp2->name);
 			else
 				sprintf (next_line, "} while (%s %s %s);\n\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72], temp2->name);
@@ -255,11 +259,6 @@ void translate_jump_block (jump_block* to_translate, function* parent)
 				parent->pivots [i] = orig;
 				break;
 			}
-			/*else if (target && target == parent->else_starts [i])
-			{
-				parent->pivots [i] = to_translate->end;
-				break;
-			}*/
 		}
 	}
 
@@ -309,6 +308,7 @@ void translate_jump_block (jump_block* to_translate, function* parent)
 		}
 	}
 
+	//From here on out, code in this function will ACTUALLY append the translation to the end of the "translation" string.
 	for (i = 0; i < parent->num_jump_addrs; i ++)
 	{
 		if (to_translate->start == parent->jump_addrs [i])
@@ -366,9 +366,12 @@ void translate_jump_block (jump_block* to_translate, function* parent)
 		sprintf (&(translation [len]), "else\n{\n");
 	}	
 
+	if (to_translate->flags & NO_TRANSLATE)
+		return;
+
 	//Translate every instruction contained in jump block
 	for (i = 0; i < to_translate->num_instructions; i ++)
-		translate_insn (to_translate->instructions [i], to_translate->instructions [i+1]);
+		translate_insn (to_translate->instructions [i], to_translate->instructions [i+1], to_translate);
 
 	if (to_translate->flags & IS_BREAK)
 	{
@@ -567,7 +570,15 @@ void jump_block_preprocessing (jump_block* to_process, function* parent)
 			new_block->instructions [i-1].operands->next = NULL;
 			parent->num_jump_addrs ++;
 			parent->jump_addrs [parent->num_jump_addrs-1] = while_block->end;
-			parent->orig_addrs [parent->num_jump_addrs-1] = index_to_addr (new_block->instructions [i-1].addr);
+			parent->orig_addrs [parent->num_jump_addrs-1] = index_to_addr (to_process->instructions [i-1].addr);
+
+			new_block->flags |= IS_WHILE;
+			while_block->flags |= NO_TRANSLATE;
+			for (i = 0; i < parent->num_jump_addrs; i++)
+			{
+				if (parent->orig_addrs [i] == index_to_addr (while_block->instructions [while_block->num_instructions-1].addr))
+					parent->jump_addrs [i] = 0;
+			}
 		}
 		else
 		{

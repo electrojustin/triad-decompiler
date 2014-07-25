@@ -38,6 +38,8 @@
 #define IS_CONTINUE 64
 #define IS_BREAK 128
 #define IS_GOTO 256
+#define IS_WHILE 512
+#define NO_TRANSLATE 1024
 
 unsigned int next_flags;
 extern char num_push_ebp;

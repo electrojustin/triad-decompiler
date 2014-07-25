@@ -25,8 +25,12 @@
 
 int main (void)
 {
-	volatile int a = 1;
-	volatile int* b = &a;
-	*b = 0;
-	return a;
+	int a = 1;
+	int b = 2;
+	while (a < 10)
+	{
+		a ++;
+		b ++;
+	}
+	return b;
 }
