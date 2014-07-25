@@ -29,7 +29,7 @@ triad: main.o program.o jump_block.o function.o var.o lang_gen.o string_hash.o
 	gcc $(CFLAGS) main.o program.o jump_block.o function.o var.o lang_gen.o string_hash.o -o triad -ldisasm
 sys_tests: test arith_test control_flow_test
 test: test.c
-	gcc -g -m32 test.c -o test
+	gcc -g -O2 -m32 test.c -o test
 arith_test: arith_test.c
 	gcc -g -m32 arith_test.c -o arith_test
 control_flow_test: control_flow_test.c

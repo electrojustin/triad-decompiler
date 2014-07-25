@@ -25,8 +25,8 @@
 
 int main (void)
 {
-	int a = 1;
-	int* b = &a;
+	volatile int a = 1;
+	volatile int* b = &a;
 	*b = 0;
 	return a;
 }

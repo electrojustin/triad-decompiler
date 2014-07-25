@@ -30,7 +30,7 @@
 
 char* translation; //String representation of equivalen C code
 size_t translation_size;
-extern char conditions [14] [3];
+extern char test_conditions [14] [3];
 char next_line [128];
 
 void translate_func (function* to_translate); //Translate and print the C equivalent of the current function

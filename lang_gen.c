@@ -30,7 +30,6 @@
 #include "lang_gen.h"
 #include "datastructs.h"
 
-char cmp_conditions [14] [3] = {"<\0\0", ">=\0", "==\0", "!=\0", "<=\0", ">\0\0", "<\0\0", ">\0\0", "\0\0\0", "\0\0\0", "<\0\0", ">=\0", "<=\0", ">\0\0"};
 char test_conditions [14] [3] = {"<\0\0", ">=\0", "!=\0", "==\0", "<=\0", ">\0\0", "<\0\0", ">\0\0", "\0\0\0", "\0\0\0", "<\0\0", ">=\0", "<=\0", ">\0\0"};
 
 void translate_insn (x86_insn_t instruction, x86_insn_t next_instruction)
