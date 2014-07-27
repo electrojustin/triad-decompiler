@@ -177,22 +177,30 @@ void translate_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_b
 			target_addr = relative_insn (&next_instruction, index_to_addr (next_instruction.addr) + next_instruction.size); 
 			temp = add_var (instruction.operands->op);
 			if (parent->flags & IS_WHILE)
-				sprintf (next_line, "\nwhile (%s %s 0)\n{\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72]);
+				sprintf (next_line, "while (%s %s 0)\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72]);
 			else if (target_addr > index_to_addr (next_instruction.addr))
-				sprintf (next_line, "\nif (%s %s 0)\n{\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72]); //The conditional jumps start with "jump if below," which has an opcode of 0x72
+				sprintf (next_line, "if (%s %s 0)\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72]); //The conditional jumps start with "jump if below," which has an opcode of 0x72
 			else
+			{
 				sprintf (next_line, "} while (%s %s 0);\n\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72]);
+				num_tabs -= 2;
+			}
+			num_tabs ++;
 			break;
 		case insn_cmp: //the compare instructions just "compares" its two operands
 			temp = add_var (instruction.operands->op);
 			temp2 = add_var (instruction.operands->next->op);
 			target_addr = relative_insn (&next_instruction, index_to_addr (next_instruction.addr) + next_instruction.size);
 			if (parent->flags & IS_WHILE)
-				sprintf (next_line, "\nwhile (%s %s %s)\n{\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72], temp2->name);
+				sprintf (next_line, "while (%s %s %s)\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72], temp2->name);
 			else if (target_addr > index_to_addr (next_instruction.addr))
-				sprintf (next_line, "\nif (%s %s %s)\n{\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72], temp2->name);
+				sprintf (next_line, "if (%s %s %s)\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72], temp2->name);
 			else
+			{
 				sprintf (next_line, "} while (%s %s %s);\n\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72], temp2->name);
+				num_tabs -= 2;
+			}
+			num_tabs ++;
 			break;
 		case insn_jcc:
 			sprintf (line, next_line);
@@ -209,12 +217,39 @@ void translate_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_b
 	}
 
 	//Add the translated line to the final translation
-	if (actual_translation_size + strlen (line) > translation_size)
+	if (actual_translation_size + strlen (line) + num_tabs > translation_size)
 	{
-		translation_size = 2*(translation_size + strlen (line));
+		translation_size = 2*(translation_size + strlen (line) + num_tabs);
 		translation = realloc (translation, translation_size);
 	}
+	if (line [0] && (instruction.type != insn_jcc || line [0] == '}'))
+	{
+		for (i = 0; i < num_tabs; i ++)
+		{
+			sprintf (&(translation [actual_translation_size]), "\t");
+			actual_translation_size ++;
+		}
+	}
+	else if (instruction.type == insn_jcc && line [0] != '}')
+	{
+		for (i = 0; i < num_tabs-1; i ++)
+		{
+			sprintf (&(translation [actual_translation_size]), "\t");
+			actual_translation_size ++;
+		}
+	}
 	strcpy (&(translation [actual_translation_size]), line);
+	if (instruction.type == insn_jcc && line [0] != '}')
+	{
+		actual_translation_size = strlen (translation);
+		for (i = 0; i < num_tabs - 1; i ++)
+		{
+			sprintf (&(translation [actual_translation_size]), "\t");
+			actual_translation_size ++;
+		}
+		sprintf (&(translation [actual_translation_size]), "{\n");
+	}
+		
 	actual_translation_size += strlen (line);
 	translation [actual_translation_size] = '\0';
 
@@ -320,12 +355,18 @@ void translate_jump_block (jump_block* to_translate, function* parent)
 					len = strlen (translation);
 					if (to_translate->start > parent->orig_addrs [i])
 					{
-						if (len + 3 > translation_size)
+						if (len + 2 + num_tabs > translation_size)
 						{
-							translation_size  = 2*(len + 3);
+							translation_size  = 2*(len + 2 + num_tabs);
 							translation = realloc (translation, translation_size);
 						}
-						sprintf (&(translation [len]), "}\n\n");
+						num_tabs --;
+						for (j = 0; j < num_tabs; j ++)
+						{
+							sprintf (&(translation [len]), "\t");
+							len ++;
+						}
+						sprintf (&(translation [len]), "}\n");
 					}
 				}
 			}	
@@ -343,12 +384,25 @@ void translate_jump_block (jump_block* to_translate, function* parent)
 					len = strlen (translation);
 					if (to_translate->start < parent->orig_addrs [i])
 					{
-						if (len + 6 > translation_size)
+						if (len + 6 + 2*num_tabs > translation_size)
 						{
-							translation_size  = 2*(len + 6);
+							translation_size  = 2*(len + 6 + 2*num_tabs);
 							translation = realloc (translation, translation_size);
 						}
-						sprintf (&(translation [len]), "\ndo\n{\n");
+						for (j = 0; j < num_tabs; j ++)
+						{
+							sprintf (&(translation [len]), "\t");
+							len ++;
+						}
+						sprintf (&(translation [len]), "do\n");
+						len += 3;
+						for (j = 0; j < num_tabs; j ++)
+						{
+							sprintf (&(translation [len]), "\t");
+							len ++;
+						}
+						sprintf (&(translation [len]), "{\n");
+						num_tabs ++;
 					}
 				}
 			}
@@ -358,12 +412,25 @@ void translate_jump_block (jump_block* to_translate, function* parent)
 	if (to_translate->flags & IS_ELSE)
 	{
 		len = strlen (translation);
-		if (len + 7 > translation_size)
+		if (len + 7 + 2*num_tabs > translation_size)
 		{
-			translation_size  = 2*(len + 7);
+			translation_size  = 2*(len + 7 + 2*num_tabs);
 			translation = realloc (translation, translation_size);
 		}
-		sprintf (&(translation [len]), "else\n{\n");
+		for (i = 0; i < num_tabs; i ++)
+		{
+			sprintf (&(translation [len]), "\t");
+			len ++;
+		}
+		sprintf (&(translation [len]), "else\n");
+		len += 5;
+		for (i = 0; i < num_tabs; i ++)
+		{
+			sprintf (&(translation [len]), "\t");
+			len ++;
+		}
+		sprintf (&(translation [len]), "{\n");
+		num_tabs ++;
 	}	
 
 	if (to_translate->flags & NO_TRANSLATE)
@@ -376,32 +443,47 @@ void translate_jump_block (jump_block* to_translate, function* parent)
 	if (to_translate->flags & IS_BREAK)
 	{
 		len = strlen (translation);
-		if (len + 7 > translation_size)
+		if (len + 7 + num_tabs > translation_size)
 		{
-			translation_size  = 2*(len + 7);
+			translation_size  = 2*(len + 7 + num_tabs);
 			translation = realloc (translation, translation_size);
+		}
+		for (i = 0; i < num_tabs; i ++)
+		{
+			sprintf (&(translation [len]), "\t");
+			len ++;
 		}
 		sprintf (&(translation [len]), "break;\n");
 	}
 	else if (to_translate->flags & IS_CONTINUE)
 	{
 		len = strlen (translation);
-		if (len + 10 > translation_size)
+		if (len + 10 + num_tabs > translation_size)
 		{
-			translation_size  = 2*(len + 10);
+			translation_size  = 2*(len + 10 + num_tabs);
 			translation = realloc (translation, translation_size);
+		}
+		for (i = 0; i < num_tabs; i ++)
+		{
+			sprintf (&(translation [len]), "\t");
+			len ++;
 		}
 		sprintf (&(translation [len]), "continue;\n");
 	}
 	else if (to_translate->flags & IS_GOTO)
 	{
 		len = strlen (translation);
-		if (len + 18 > translation_size)
+		if (len + 17 + num_tabs > translation_size)
 		{
-			translation_size  = 2*(len + 18);
+			translation_size  = 2*(len + 18 + num_tabs);
 			translation = realloc (translation, translation_size);
 		}
-		sprintf (&(translation [len]), "goto %p;\n\n", target);
+		for (i = 0; i < num_tabs; i ++)
+		{
+			sprintf (&(translation [len]), "\t");
+			len ++;
+		}
+		sprintf (&(translation [len]), "goto %p;\n", target);
 	}
 
 	for (i = 0; i < parent->num_jump_addrs; i ++)
@@ -597,6 +679,7 @@ void translate_func (function* to_translate)
 	var* current_var;
 	var* current_global = global_list;
 	char* name = NULL;
+	num_tabs = 1;
 
 	while (current_global && current_global->next != global_list)
 		current_global = current_global->next;
@@ -616,9 +699,9 @@ void translate_func (function* to_translate)
 	list_loop (translate_jump_block, to_translate->jump_block_list, to_translate->jump_block_list, to_translate);
 
 	if (current_global)
-		list_loop (print_declarations, current_global, global_list);
+		list_loop (print_declarations, current_global, global_list, 0);
 	else if (global_list)
-		list_loop (print_declarations, global_list, global_list);
+		list_loop (print_declarations, global_list, global_list, 0);
 	printf ("\n");
 
 	//Print function header
@@ -650,7 +733,7 @@ void translate_func (function* to_translate)
 
 	//Print all variable declarations
 	if (var_list)
-		list_loop (print_declarations, var_list, var_list);
+		list_loop (print_declarations, var_list, var_list, 1);
 	printf ("\n");
 
 	//Print the string translation of the given instructions
@@ -675,13 +758,18 @@ void translate_function_list (function* function_list)
 		clean_var_list (global_list);
 }
 
-void print_declarations (var* to_print)
+void print_declarations (var* to_print, char should_tab)
 {
 	if (to_print->type != DEREF && to_print->type != CONST && strcmp (to_print->name, "ebp") && strcmp (to_print->name, "esp")) //Dont need to declare constants. ESP and EBP are NOT general purpose
 	{
-		if (to_print->type == REG)
+		if (to_print->type == REG && should_tab)
+			printf ("\tregister ");
+		else if (to_print->type == REG)
 			printf ("register ");
-		printf ("%s %s", to_print->c_type, to_print->name);
+		if (should_tab && to_print->type != REG)
+			printf ("\t%s %s", to_print->c_type, to_print->name);
+		else
+			printf ("%s %s", to_print->c_type, to_print->name);
 		if (to_print->type != PARAM)
 			printf (";\n");
 	}
