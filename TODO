@@ -17,7 +17,7 @@ MISC
 
 Fix the spider disassembler - NEXT RELEASE
 
-Perhaps add an automatic tabbing system to improve readability?
+Valrind indicates a lot of memory errors. FIX THIS ASAP
 
 MORE DOCUMENTATION
 

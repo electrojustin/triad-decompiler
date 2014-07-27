@@ -46,12 +46,10 @@ properly.
 The only supported binary format currently supported is the Executable and
 Linkable Format (ELF), commonly used on UNIX like systems, such as LINUX.
 
-Control flow decompilation should be mostly correct, but it will look funky.
-While loops will end up as do-while loops inside of if statements, which is
-semantically equivalent but not exactly what the original source would have
-looked like. Continues, and forward gotos inside of conditional
-statements might wind up as if-else statements. Once again, semantically
-equivalent but different from original source.
+Control flow decompilation should be mostly correct, but it may look funky.
+Continues, and forward gotos inside of conditional statements might wind up as
+if-else statements. This is actually semantically equivalent, just different
+from original source.
 
 Optimization and computed jumps will probably cause a program to be decompiled
 completely incorrectly.
