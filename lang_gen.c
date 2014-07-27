@@ -197,7 +197,7 @@ void translate_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_b
 				sprintf (next_line, "if (%s %s %s)\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72], temp2->name);
 			else
 			{
-				sprintf (next_line, "} while (%s %s %s);\n\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72], temp2->name);
+				sprintf (next_line, "} while (%s %s %s);\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72], temp2->name);
 				num_tabs -= 2;
 			}
 			num_tabs ++;
