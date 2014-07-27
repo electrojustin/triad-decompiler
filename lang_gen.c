@@ -182,7 +182,7 @@ void translate_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_b
 				sprintf (next_line, "if (%s %s 0)\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72]); //The conditional jumps start with "jump if below," which has an opcode of 0x72
 			else
 			{
-				sprintf (next_line, "} while (%s %s 0);\n\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72]);
+				sprintf (next_line, "} while (%s %s 0);\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72]);
 				num_tabs -= 2;
 			}
 			num_tabs ++;
