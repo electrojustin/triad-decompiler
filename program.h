@@ -34,6 +34,7 @@ unsigned int file_size; //Size of file in bytes
 unsigned int text_offset; //Number of bytes from file beginning where .text starts
 unsigned int text_addr; //Virtual memory address .text is loaded into
 unsigned int entry_point; //Entry point of executable. NOTE: probably don't want to start disassembling here
+int num_sections;
 Elf32_Sym* symbol_table;
 Elf32_Sym* symbol_table_end;
 Elf32_Sym* dynamic_symbol_table;
@@ -45,6 +46,7 @@ unsigned int main_addr;
 
 void parse_elf (char* file_name);
 void init_file_buf (char* file_name);
+void get_num_sections (void);
 void get_entry_point (void);
 void get_section_names (void);
 void get_text (void);
