@@ -51,14 +51,13 @@ void translate_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_b
 		if (instruction.operands->next)
 			temp2 = add_var (instruction.operands->next->op);
 	}
-
-	switch (instruction.type)
+	if (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp"))
 	{
-		//We cut out anything involving EBP or ESP since these are not general purpose registers and would not be part of original program arithmetic
-		//insn_mov through insn_xor are just basic arithmetic operators
-		case insn_mov:
-			if (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp"))
-			{
+		switch (instruction.type)
+		{
+			//We cut out anything involving EBP or ESP since these are not general purpose registers and would not be part of original program arithmetic
+			//insn_mov through insn_xor are just basic arithmetic operators
+			case insn_mov:
 				if (strcmp (instruction.mnemonic, "lea"))
 				{
 					if (temp->type != DEREF && temp2->type != DEREF)
@@ -71,166 +70,153 @@ void translate_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_b
 						sprintf (line, "*(%s*)(%s+(%d)) = *(%s*)(%s+(%d))", temp->c_type, temp->name, temp->loc.disp, temp2->c_type, temp2->name, temp2->loc.disp);
 				}
 				else
-					sprintf (line, "%s = (%s)&%s;\n", temp->name, temp2->c_type, temp2->name);	
-			}
-			break;
-		case insn_sub:
-			if (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp"))
+					sprintf (line, "%s = (%s)&%s;\n", temp->name, temp2->c_type, temp2->name);
+				break;
+			case insn_sub:
 				sprintf (line, "%s -= %s;\n", temp->name, temp2->name);
-			break;
-		case insn_add:
-			if (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp"))
+				break;
+			case insn_add:
 				sprintf (line, "%s += %s;\n", temp->name, temp2->name);
-			break;
-		case insn_mul:
-			if (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp"))
+				break;
+			case insn_mul:
 				sprintf (line, "%s *= %s;\n", temp->name, temp2->name);
-			break;
-		case insn_div:
-			if (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp"))
+				break;
+			case insn_div:
 				sprintf (line, "%s /= %s;\n", temp->name, temp2->name);
-			break;
-		case insn_and:
-			if (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp"))
+				break;
+			case insn_and:
 				sprintf (line, "%s &= %s;\n", temp->name, temp2->name);
-			break;
-		case insn_or:
-			if (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp"))
+				break;
+			case insn_or:
 				sprintf (line, "%s |= %s;\n", temp->name, temp2->name);
-			break;
-		case insn_shr:
-			if (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp"))
+				break;
+			case insn_shr:
 				sprintf (line, "%s = %s >> %s;\n", temp->name, temp->name, temp2->name);
-			break;
-		case insn_shl:
-			if (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp"))
+				break;
+			case insn_shl:
 				sprintf (line, "%s = %s << %s;\n", temp->name, temp->name, temp2->name);
-			break;
-		case insn_xor:
-			if (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp"))
+				break;
+			case insn_xor:
 				sprintf (line, "%s ^= %s;\n", temp->name, temp2->name);
-			break;
-		case insn_not:
-			if (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp"))
+				break;
+			case insn_not:
 				sprintf (line, "%s = ~%s;\n", temp->name, temp->name);
-			break;
-		case insn_dec:
-			if (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp"))
+				break;
+			case insn_dec:
 				sprintf (line, "%s --;\n", temp->name);
-			break;
-		case insn_inc:
-			if (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp"))
+				break;
+			case insn_inc:
 				sprintf (line, "%s ++;\n", temp->name);
-			break;
-		case insn_pop:
-			break;
-		case insn_return:
-			sprintf (line, "return eax;\n"); //All functions return EAX
-			break;
-		case insn_leave:
-			break;
-		case insn_push: //pushing onto the stack is how the caller passes arguments to the the callee
-			temp = add_var (instruction.operands->op);
-			if (temp->type != REG || (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp") && strcmp (temp->name, "ecx")))
-			{
-				//Add the variable to the argument array (caller_param). Cannot use argument linked list because the variables used are already linked into the local
-				//variable linked list.
-				if (!caller_param)
+				break;
+			case insn_pop:
+				break;
+			case insn_return:
+				sprintf (line, "return eax;\n"); //All functions return EAX
+				break;
+			case insn_leave:
+				break;
+			case insn_push: //pushing onto the stack is how the caller passes arguments to the the callee
+				temp = add_var (instruction.operands->op);
+				if (temp->type != REG || (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp") && strcmp (temp->name, "ecx")))
 				{
-					caller_params_size = 8*sizeof (var);
-					caller_param = malloc (caller_params_size);
+					//Add the variable to the argument array (caller_param). Cannot use argument linked list because the variables used are already linked into the local
+					//variable linked list.
+					if (!caller_param)
+					{
+						caller_params_size = 8*sizeof (var);
+						caller_param = malloc (caller_params_size);
+					}
+					num_caller_params ++;
+					if (num_caller_params * sizeof (var) > caller_params_size)
+					{
+						caller_params_size *= 2;
+						caller_param = realloc (caller_param, caller_params_size);
+					}
+					caller_param [num_caller_params-1] = *temp;
+					
 				}
-				num_caller_params ++;
-				if (num_caller_params * sizeof (var) > caller_params_size)
+				break;
+			case insn_call:
+				target_addr = relative_insn (&instruction, index_to_addr (instruction.addr) + instruction.size);
+				if ((unsigned char)file_buf [addr_to_index (target_addr)] == 0xFF && dynamic_string_table)
+					name = &(dynamic_string_table [find_reloc_sym (*(int*)&(file_buf [addr_to_index (target_addr)+2]))->st_name]);
+				else if (string_hash_table)
+					name = string_hash_table [target_addr-0x8048000];
+				if (name)
 				{
-					caller_params_size *= 2;
-					caller_param = realloc (caller_param, caller_params_size);
+					len = strlen (name);
+					if (len + 12 + num_caller_params*22 > line_length)
+					{
+						line_length = len + 12 + num_caller_params*22;
+						line = realloc (line, line_length);
+					}
+					sprintf (line, "eax = %s (", name);
 				}
-				caller_param [num_caller_params-1] = *temp;
-				
-			}
-			break;
-		case insn_call:
-			target_addr = relative_insn (&instruction, index_to_addr (instruction.addr) + instruction.size);
-			if ((unsigned char)file_buf [addr_to_index (target_addr)] == 0xFF && dynamic_string_table)
-				name = &(dynamic_string_table [find_reloc_sym (*(int*)&(file_buf [addr_to_index (target_addr)+2]))->st_name]);
-			else if (string_hash_table)
-				name = string_hash_table [target_addr-0x8048000];
-			if (name)
-			{
-				len = strlen (name);
-				if (len + 12 + num_caller_params*22 > line_length)
+				else
+					sprintf (line, "eax = func_%p (", target_addr);
+	
+				//Print the argument list
+				if (caller_param)
 				{
-					line_length = len + 12 + num_caller_params*22;
-					line = realloc (line, line_length);
+					sprintf (&(line [strlen (line)]), "%s", caller_param [num_caller_params-1].name);
+					for (i = num_caller_params-2; i >= 0; i --)
+					{
+						if (caller_param [i].type == DEREF)
+							sprintf (&(line [strlen (line)]), ", *(%s*)(%s+(%d))", caller_param [i].c_type, caller_param [i].name, caller_param [i].loc.disp);
+						else
+							sprintf (&(line [strlen (line)]), ", %s", caller_param [i].name);
+					}
 				}
-				sprintf (line, "eax = %s (", name);
-			}
-			else
-				sprintf (line, "eax = func_%p (", target_addr);
 
-
-			//Print the argument list
-			if (caller_param)
-			{
-				sprintf (&(line [strlen (line)]), "%s", caller_param [num_caller_params-1].name);
-				for (i = num_caller_params-2; i >= 0; i --)
+				sprintf (&(line [strlen (line)]), ");\n");
+				free (caller_param);
+				caller_param = NULL;
+				num_caller_params = 0;
+				caller_params_size = 0;
+				break;
+			case insn_test: //the test instruction is normally found in the context test %eax,%eax. This compares EAX to 0.
+				//Instruction after a compare or a test is usually a conditional jump
+				target_addr = relative_insn (&next_instruction, index_to_addr (next_instruction.addr) + next_instruction.size); 
+				temp = add_var (instruction.operands->op);
+				if (parent->flags & IS_WHILE)
+					sprintf (next_line, "while (%s %s 0)\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72]);
+				else if (target_addr > index_to_addr (next_instruction.addr))
+					sprintf (next_line, "if (%s %s 0)\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72]); //The conditional jumps start with "jump if below," which has an opcode of 0x72
+				else
 				{
-					if (caller_param [i].type == DEREF)
-						sprintf (&(line [strlen (line)]), ", *(%s*)(%s+(%d))", caller_param [i].c_type, caller_param [i].name, caller_param [i].loc.disp);
-					else
-						sprintf (&(line [strlen (line)]), ", %s", caller_param [i].name);
+					sprintf (next_line, "} while (%s %s 0);\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72]);
+					num_tabs -= 2;
 				}
-			}
-
-			sprintf (&(line [strlen (line)]), ");\n");
-			free (caller_param);
-			caller_param = NULL;
-			num_caller_params = 0;
-			caller_params_size = 0;
-			break;
-		case insn_test: //the test instruction is normally found in the context test %eax,%eax. This compares EAX to 0.
-			//Instruction after a compare or a test is usually a conditional jump
-			target_addr = relative_insn (&next_instruction, index_to_addr (next_instruction.addr) + next_instruction.size); 
-			temp = add_var (instruction.operands->op);
-			if (parent->flags & IS_WHILE)
-				sprintf (next_line, "while (%s %s 0)\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72]);
-			else if (target_addr > index_to_addr (next_instruction.addr))
-				sprintf (next_line, "if (%s %s 0)\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72]); //The conditional jumps start with "jump if below," which has an opcode of 0x72
-			else
-			{
-				sprintf (next_line, "} while (%s %s 0);\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72]);
-				num_tabs -= 2;
-			}
-			num_tabs ++;
-			break;
-		case insn_cmp: //the compare instructions just "compares" its two operands
-			temp = add_var (instruction.operands->op);
-			temp2 = add_var (instruction.operands->next->op);
-			target_addr = relative_insn (&next_instruction, index_to_addr (next_instruction.addr) + next_instruction.size);
-			if (parent->flags & IS_WHILE)
-				sprintf (next_line, "while (%s %s %s)\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72], temp2->name);
-			else if (target_addr > index_to_addr (next_instruction.addr))
-				sprintf (next_line, "if (%s %s %s)\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72], temp2->name);
-			else
-			{
-				sprintf (next_line, "} while (%s %s %s);\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72], temp2->name);
-				num_tabs -= 2;
-			}
-			num_tabs ++;
-			break;
-		case insn_jcc:
-			sprintf (line, next_line);
-			bzero (next_line, 128);
-			break;
-		case insn_jmp:
-			break;
-		case insn_nop:
-			break;
-		default:
-			x86_format_insn (&instruction, line, 128, att_syntax);
-			line [strlen (line)] = '\n';
-			break;
+				num_tabs ++;
+				break;
+			case insn_cmp: //the compare instructions just "compares" its two operands
+				temp = add_var (instruction.operands->op);
+				temp2 = add_var (instruction.operands->next->op);
+				target_addr = relative_insn (&next_instruction, index_to_addr (next_instruction.addr) + next_instruction.size);
+				if (parent->flags & IS_WHILE)
+					sprintf (next_line, "while (%s %s %s)\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72], temp2->name);
+				else if (target_addr > index_to_addr (next_instruction.addr))
+					sprintf (next_line, "if (%s %s %s)\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72], temp2->name);
+				else
+				{
+					sprintf (next_line, "} while (%s %s %s);\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72], temp2->name);
+					num_tabs -= 2;
+				}
+				num_tabs ++;
+				break;
+			case insn_jcc:
+				sprintf (line, next_line);
+				bzero (next_line, 128);
+				break;
+			case insn_jmp:
+				break;
+			case insn_nop:
+				break;
+			default:
+				x86_format_insn (&instruction, line, 128, att_syntax);
+				line [strlen (line)] = '\n';
+				break;
+		}
 	}
 
 	//Add the translated line to the final translation
