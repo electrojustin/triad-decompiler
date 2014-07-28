@@ -17,10 +17,14 @@ MISC
 
 Fix the spider disassembler - NEXT RELEASE
 
+Add in a binary editor to inject code and edit the surrounding jumps - NEXT RELEASE
+
 Valrind indicates a lot of memory errors. FIX THIS ASAP
 
 MORE DOCUMENTATION
 
 CODE CLEANUPS
+
+Switch to capstone disassembler and support x86_64 - LONG TERM
 
 }
