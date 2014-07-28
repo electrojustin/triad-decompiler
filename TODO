@@ -15,11 +15,7 @@ Add support for datastructures and arrays - LONG TERM
 MISC
 {
 
-Fix the spider disassembler - NEXT RELEASE
-
 Add in a binary editor to inject code and edit the surrounding jumps - NEXT RELEASE
-
-Valrind indicates a lot of memory errors. FIX THIS ASAP
 
 MORE DOCUMENTATION
 
