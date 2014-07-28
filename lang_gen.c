@@ -51,7 +51,7 @@ void translate_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_b
 		if (instruction.operands->next)
 			temp2 = add_var (instruction.operands->next->op);
 	}
-	if (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp"))
+	if (!temp || (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp")))
 	{
 		switch (instruction.type)
 		{
