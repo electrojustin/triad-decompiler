@@ -38,20 +38,25 @@ void translate_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_b
 	char* name = NULL;
 	int len;
 	int line_length = 128;
-	var* temp;
-	var* temp2;
+	var* temp = NULL;
+	var* temp2 = NULL;
 	bzero (line, 128);
 	int actual_translation_size = strlen (translation);
 	int i;
 	int target_addr;
+
+	if (instruction.type >> 12 == insn_arithmetic || instruction.type >> 12 == insn_logic || instruction.type >> 12 == insn_move)
+	{
+		temp = add_var (instruction.operands->op);
+		if (instruction.operands->next)
+			temp2 = add_var (instruction.operands->next->op);
+	}
 
 	switch (instruction.type)
 	{
 		//We cut out anything involving EBP or ESP since these are not general purpose registers and would not be part of original program arithmetic
 		//insn_mov through insn_xor are just basic arithmetic operators
 		case insn_mov:
-			temp = add_var (instruction.operands->op);
-			temp2 = add_var (instruction.operands->next->op);
 			if (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp"))
 			{
 				if (strcmp (instruction.mnemonic, "lea"))
@@ -70,71 +75,50 @@ void translate_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_b
 			}
 			break;
 		case insn_sub:
-			temp = add_var (instruction.operands->op);
-			temp2 = add_var (instruction.operands->next->op);
 			if (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp"))
 				sprintf (line, "%s -= %s;\n", temp->name, temp2->name);
 			break;
 		case insn_add:
-			temp = add_var (instruction.operands->op);
-			temp2 = add_var (instruction.operands->next->op);
 			if (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp"))
 				sprintf (line, "%s += %s;\n", temp->name, temp2->name);
 			break;
 		case insn_mul:
-			temp = add_var (instruction.operands->op);
-			temp2 = add_var (instruction.operands->next->op);
 			if (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp"))
 				sprintf (line, "%s *= %s;\n", temp->name, temp2->name);
 			break;
 		case insn_div:
-			temp = add_var (instruction.operands->op);
-			temp2 = add_var (instruction.operands->next->op);
 			if (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp"))
 				sprintf (line, "%s /= %s;\n", temp->name, temp2->name);
 			break;
 		case insn_and:
-			temp = add_var (instruction.operands->op);
-			temp2 = add_var (instruction.operands->next->op);
 			if (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp"))
 				sprintf (line, "%s &= %s;\n", temp->name, temp2->name);
 			break;
 		case insn_or:
-			temp = add_var (instruction.operands->op);
-			temp2 = add_var (instruction.operands->next->op);
 			if (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp"))
 				sprintf (line, "%s |= %s;\n", temp->name, temp2->name);
 			break;
 		case insn_shr:
-			temp = add_var (instruction.operands->op);
-			temp2 = add_var (instruction.operands->next->op);
 			if (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp"))
 				sprintf (line, "%s = %s >> %s;\n", temp->name, temp->name, temp2->name);
 			break;
 		case insn_shl:
-			temp = add_var (instruction.operands->op);
-			temp2 = add_var (instruction.operands->next->op);
 			if (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp"))
 				sprintf (line, "%s = %s << %s;\n", temp->name, temp->name, temp2->name);
 			break;
 		case insn_xor:
-			temp = add_var (instruction.operands->op);
-			temp2 = add_var (instruction.operands->next->op);
 			if (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp"))
 				sprintf (line, "%s ^= %s;\n", temp->name, temp2->name);
 			break;
 		case insn_not:
-			temp = add_var (instruction.operands->op);
 			if (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp"))
 				sprintf (line, "%s = ~%s;\n", temp->name, temp->name);
 			break;
 		case insn_dec:
-			temp = add_var (instruction.operands->op);
 			if (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp"))
 				sprintf (line, "%s --;\n", temp->name);
 			break;
 		case insn_inc:
-			temp = add_var (instruction.operands->op);
 			if (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp"))
 				sprintf (line, "%s ++;\n", temp->name);
 			break;
