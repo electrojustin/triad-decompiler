@@ -25,12 +25,8 @@
 
 int main (void)
 {
-	int a = 1;
-	int b = 2;
-	while (a < 10)
-	{
-		a ++;
-		b ++;
-	}
+	volatile int a = 1;
+	volatile int b = 2;
+	b = b >> a;
 	return b;
 }
