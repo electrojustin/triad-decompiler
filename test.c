@@ -27,6 +27,8 @@ int main (void)
 {
 	volatile int a = 1;
 	volatile int b = 2;
+	b = ~b;
 	b = b >> a;
+	b = b << (b/a);
 	return b;
 }

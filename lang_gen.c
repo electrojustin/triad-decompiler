@@ -87,6 +87,12 @@ void translate_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_b
 			if (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp"))
 				sprintf (line, "%s *= %s;\n", temp->name, temp2->name);
 			break;
+		case insn_div:
+			temp = add_var (instruction.operands->op);
+			temp2 = add_var (instruction.operands->next->op);
+			if (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp"))
+				sprintf (line, "%s /= %s;\n", temp->name, temp2->name);
+			break;
 		case insn_and:
 			temp = add_var (instruction.operands->op);
 			temp2 = add_var (instruction.operands->next->op);
@@ -109,13 +115,28 @@ void translate_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_b
 			temp = add_var (instruction.operands->op);
 			temp2 = add_var (instruction.operands->next->op);
 			if (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp"))
-				sprintf (line, "%s = %s >> %s;\n", temp->name, temp->name, temp2->name);
+				sprintf (line, "%s = %s << %s;\n", temp->name, temp->name, temp2->name);
 			break;
 		case insn_xor:
 			temp = add_var (instruction.operands->op);
 			temp2 = add_var (instruction.operands->next->op);
 			if (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp"))
 				sprintf (line, "%s ^= %s;\n", temp->name, temp2->name);
+			break;
+		case insn_not:
+			temp = add_var (instruction.operands->op);
+			if (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp"))
+				sprintf (line, "%s = ~%s;\n", temp->name, temp->name);
+			break;
+		case insn_dec:
+			temp = add_var (instruction.operands->op);
+			if (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp"))
+				sprintf (line, "%s --;\n", temp->name);
+			break;
+		case insn_inc:
+			temp = add_var (instruction.operands->op);
+			if (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp"))
+				sprintf (line, "%s ++;\n", temp->name);
 			break;
 		case insn_pop:
 			break;
