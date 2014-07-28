@@ -24,7 +24,7 @@
 CFLAGS=-O2
 mrproper: triad clean
 debug: CFLAGS=-g
-debug: triad
+debug: triad spider
 triad: main.o program.o jump_block.o function.o var.o lang_gen.o string_hash.o
 	gcc $(CFLAGS) main.o program.o jump_block.o function.o var.o lang_gen.o string_hash.o -o triad -ldisasm
 sys_tests: test arith_test control_flow_test
@@ -34,8 +34,8 @@ arith_test: arith_test.c
 	gcc -g -m32 arith_test.c -o arith_test
 control_flow_test: control_flow_test.c
 	gcc -g -m32 control_flow_test.c -o control_flow_test
-spider: spider.o jump_block.o function.o program.o
-	gcc $(CFLAGS) spider.o jump_block.o function.o program.o -o spider -ldisasm
+spider: spider.o jump_block.o function.o program.o string_hash.o
+	gcc $(CFLAGS) spider.o jump_block.o function.o program.o string_hash.o -o spider -ldisasm
 main.o: main.c program.h function.h
 	gcc $(CFLAGS) -c main.c
 spider.o: spider.c program.h function.h

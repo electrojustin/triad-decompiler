@@ -40,15 +40,13 @@
 int main (int argc, char** argv)
 {
 	function* test_func = malloc (sizeof (function));
-	init_file_buf (argv [1]);
-	get_text();
+	parse_elf (argv [1]);
 	x86_init (opt_none, NULL, NULL);
-	get_entry_point ();
 	init_function (test_func, strtoul (argv [2], NULL, 16), file_buf, 1);
 	resolve_conditional_jumps (test_func->jump_block_list);
 	resolve_calls (test_func);
 	print_function_list (test_func);
 	function_list_cleanup (test_func, 1); //Make sure those operands don't leak
-	free (file_buf);
+	elf_parser_cleanup ();
 	x86_cleanup ();
 }

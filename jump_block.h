@@ -26,6 +26,7 @@
 #include <libdis.h>
 
 #include "program.h"
+#include "string_hash.h"
 
 #pragma once
 
