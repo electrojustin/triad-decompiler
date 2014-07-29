@@ -97,6 +97,7 @@ void get_text (void)
 	}
 	text_offset = section_table [loop].sh_offset; //Get offset in bytes from beginning of file to .text
 	text_addr = section_table [loop].sh_addr; //Get virtual memory address of .text
+	end_of_text = section_table [loop].sh_offset;
 }
 
 void get_syms (void)
