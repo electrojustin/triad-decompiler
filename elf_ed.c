@@ -62,7 +62,7 @@ void fix_relative_addrs (unsigned int insertion_addr, int size)
 	{
 		insn_size = x86_disasm (file_buf, file_size, 0, addr_to_index (current), &instruction);
 		current += insn_size;
-		if (instruction.type == insn_jcc || instruction.type == insn_jmp || instruction.type == insn.call)
+		if (instruction.type == insn_jcc || instruction.type == insn_jmp || instruction.type == insn_call)
 		{
 			if (instruction.operands->op.type != op_relative_far && instruction.operands->op.type != op_relative_near)
 				continue;
@@ -137,6 +137,7 @@ void main (int argc, char** argv)
 	FILE* output;
 	char* output_buf;
 	unsigned int start_addr;
+	size_t input_file_size;
 
 	if (argc < 4 || argc > 5)
 	{
@@ -148,7 +149,6 @@ void main (int argc, char** argv)
 	{
 		FILE* input;
 		char* input_buf;
-		size_t input_file_size;
 
 		parse_elf (argv [1]);
 
@@ -165,7 +165,7 @@ void main (int argc, char** argv)
 			exit (1);
 		}
 
-		seek (input, 0, SEEK_END);
+		fseek (input, 0, SEEK_END);
 		input_file_size = ftell (input);
 		input_buf = malloc (input_file_size);
 		fseek (input, 0, SEEK_SET);
@@ -193,7 +193,7 @@ void main (int argc, char** argv)
 			printf ("CRITICAL ERROR: Invalid starting address.\n");
 			exit (1);
 		}
-		size_of_deletion = atoi (argv [4], NULL, 16);
+		size_of_deletion = atoi (argv [4]);
 
 		output_buf = del_target (start_addr, size_of_deletion);
 		output = fopen (argv [2], "w+");

@@ -22,7 +22,7 @@
   THE SOFTWARE.*/
 
 
-#include <libdisasm.h>
+#include <libdis.h>
 #include "program.h"
 
 void fix_section_table (unsigned int insertion_addr, int size);

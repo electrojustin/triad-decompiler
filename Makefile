@@ -36,6 +36,10 @@ control_flow_test: control_flow_test.c
 	gcc -g -m32 control_flow_test.c -o control_flow_test
 spider: spider.o jump_block.o function.o program.o string_hash.o
 	gcc $(CFLAGS) spider.o jump_block.o function.o program.o string_hash.o -o spider -ldisasm
+elf_ed: elf_ed.o program.o string_hash.o jump_block.o
+	gcc $(CFLAGS) elf_ed.o program.o string_hash.o jump_block.o -o elf_ed -ldisasm
+elf_ed.o: elf_ed.c elf_ed.h program.h
+	gcc $(CFLAGS) -c elf_ed.c
 main.o: main.c program.h function.h
 	gcc $(CFLAGS) -c main.c
 spider.o: spider.c program.h function.h
