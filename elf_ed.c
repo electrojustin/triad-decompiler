@@ -35,6 +35,9 @@ void fix_header (unsigned int insertion_addr, int size)
 
 	if (index_to_addr (header->e_shstrndx) > insertion_addr)
 		header->e_shstrndx += size;
+
+	if (header->e_entry > insertion_addr)
+		header->e_entry += size;
 }
 
 void fix_program_table (unsigned int insertion_addr, int size)
@@ -86,7 +89,7 @@ void fix_sym_tab (unsigned int insertion_addr, int size)
 
 	while (&(symbol_table [loop]) < symbol_table_end)
 	{
-		if (index_to_addr (symbol_table [loop].st_value) > insertion_addr)
+		if (symbol_table [loop].st_value > insertion_addr)
 			symbol_table [loop].st_value += size;
 		loop ++;
 	}
@@ -94,10 +97,25 @@ void fix_sym_tab (unsigned int insertion_addr, int size)
 
 void fix_relative_addrs (unsigned int insertion_addr, int size)
 {
-	unsigned int current = text_addr;
+	unsigned int current;
 	unsigned int target_addr;
 	int insn_size;
 	x86_insn_t instruction;
+	int loop = 0;
+	unsigned int section_table_index;
+	Elf32_Shdr* section_table;
+
+	section_table_index = ((Elf32_Ehdr*)&(file_buf [0]))->e_shoff; //Use level hacking to get offset to section header table from elf header
+	section_table = (Elf32_Shdr*)&(file_buf [section_table_index]); //Use level hacking to get section header
+
+	loop ++;
+	while (strcmp (section_string_table + section_table [loop].sh_name, ".plt") && loop < num_sections)
+		loop ++;
+
+	if (loop >= num_sections)
+		current = text_addr;
+	else
+		current = index_to_addr (section_table [loop].sh_offset);
 	
 	while (addr_to_index (current) < end_of_text)
 	{
@@ -106,13 +124,31 @@ void fix_relative_addrs (unsigned int insertion_addr, int size)
 		if (instruction.type == insn_jcc || instruction.type == insn_jmp || instruction.type == insn_call)
 		{
 			if (instruction.operands->op.type != op_relative_far && instruction.operands->op.type != op_relative_near)
-				continue;
-
-			target_addr = relative_insn (&instruction, current);
-			if (target_addr > insertion_addr && current < insertion_addr)
-				*(signed int*)&(file_buf [addr_to_index (current - insn_size) + 1]) += size; //At least I don't have to think about endianness?
-			if (target_addr < insertion_addr && current > insertion_addr)
-				*(signed int*)&(file_buf [addr_to_index (current - insn_size) + 1]) -= size; //At least I don't have to think about endianness?
+			{
+				//The absolute jumps and calls need fixing too, actually. Mostly in the PLT
+				if (instruction.operands->op.type == op_expression)
+				{
+					if (*(unsigned int*)&(file_buf [addr_to_index (current - insn_size) + 2]) > insertion_addr && current < insertion_addr)
+						*(unsigned int*)&(file_buf [addr_to_index (current - insn_size) + 2]) += size; //At least I don't have to think about endianness?
+					if (*(unsigned int*)&(file_buf [addr_to_index (current - insn_size) + 2]) < insertion_addr && current > insertion_addr)
+						*(unsigned int*)&(file_buf [addr_to_index (current - insn_size) + 2]) -= size; //At least I don't have to think about endianness?
+				}
+				if (instruction.operands->op.type == op_absolute)
+				{
+					if (*(unsigned int*)&(file_buf [addr_to_index (current - insn_size) + 1]) > insertion_addr && current < insertion_addr)
+						*(unsigned int*)&(file_buf [addr_to_index (current - insn_size) + 1]) += size; //At least I don't have to think about endianness?
+					if (*(unsigned int*)&(file_buf [addr_to_index (current - insn_size) + 1]) < insertion_addr && current > insertion_addr)
+						*(unsigned int*)&(file_buf [addr_to_index (current - insn_size) + 1]) -= size; //At least I don't have to think about endianness?
+				}
+			}
+			else
+			{
+				target_addr = relative_insn (&instruction, current);
+				if (target_addr > insertion_addr && current < insertion_addr)
+					*(signed int*)&(file_buf [addr_to_index (current - insn_size) + 1]) += size; //At least I don't have to think about endianness?
+				if (target_addr < insertion_addr && current > insertion_addr)
+					*(signed int*)&(file_buf [addr_to_index (current - insn_size) + 1]) -= size; //At least I don't have to think about endianness?
+			}
 		}
 	}
 }
