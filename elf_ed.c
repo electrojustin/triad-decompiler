@@ -32,6 +32,9 @@ void fix_header (unsigned int insertion_addr, int size)
 
 	if (index_to_addr (header->e_shoff) > insertion_addr)
 		header->e_shoff += size;
+
+	if (index_to_addr (header->e_shstrndx) > insertion_addr)
+		header->e_shstrndx += size;
 }
 
 void fix_program_table (unsigned int insertion_addr, int size)
@@ -83,7 +86,7 @@ void fix_sym_tab (unsigned int insertion_addr, int size)
 
 	while (&(symbol_table [loop]) < symbol_table_end)
 	{
-		if (symbol_table [loop].st_value > insertion_addr)
+		if (index_to_addr (symbol_table [loop].st_value) > insertion_addr)
 			symbol_table [loop].st_value += size;
 		loop ++;
 	}
@@ -120,11 +123,11 @@ char* insert_target (unsigned int insertion_addr, int size, char* insertion_buf)
 	int loop = 0;
 	int loop2 = 0;
 
-	fix_header (insertion_addr, size);
 	fix_program_table (insertion_addr, size);
 	fix_section_table (insertion_addr, size);
 	fix_sym_tab (insertion_addr, size);
 	fix_relative_addrs (insertion_addr, size);
+	fix_header (insertion_addr, size);
 
 	new_file_buf = malloc (file_size + size);
 
@@ -153,11 +156,11 @@ char* del_target (unsigned int start_addr, int size)
 	int loop = 0;
 	int loop2 = 0;
 
-	fix_header (start_addr, -1*size);
 	fix_program_table (start_addr, -1*size);
 	fix_section_table (start_addr, -1*size);
 	fix_sym_tab (start_addr, -1*size);
 	fix_relative_addrs (start_addr, -1*size);
+	fix_header (start_addr, -1*size);
 
 	new_file_buf = malloc (file_size - size);
 
