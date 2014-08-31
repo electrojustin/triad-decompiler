@@ -25,10 +25,20 @@
 
 int main (void)
 {
-	volatile int a = 1;
-	volatile int b = 2;
-	b = ~b;
-	b = b >> a;
-	b = b << (b/a);
-	return b;
+	int a = 1;
+	int b;
+
+	switch (a)
+	{
+		case 1:
+			b = 2;
+		case 2:
+			b = 1;
+		case 3:
+			b = -6;
+		case 4:
+			b = -7;
+		default:
+			b = 1024;
+	}
 }

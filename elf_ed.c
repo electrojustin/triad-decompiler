@@ -23,6 +23,44 @@
 
 #include "elf_ed.h"
 
+void fix_header (unsigned int insertion_addr, int size)
+{
+	Elf32_Ehdr* header = (Elf32_Ehdr*)&(file_buf [0]);
+
+	if (index_to_addr (header->e_phoff) > insertion_addr)
+		header->e_phoff += size;
+
+	if (index_to_addr (header->e_shoff) > insertion_addr)
+		header->e_shoff += size;
+}
+
+void fix_program_table (unsigned int insertion_addr, int size)
+{
+	int loop = 0;
+	unsigned int program_table_index;
+	Elf32_Phdr* program_table;
+	int num_program_entries;
+
+	program_table_index = ((Elf32_Ehdr*)&(file_buf [0]))->e_phoff;
+	num_program_entries = ((Elf32_Ehdr*)&(file_buf [0]))->e_phnum;
+	program_table = (Elf32_Phdr*)&(file_buf [program_table_index]);
+
+	for (loop; loop < num_program_entries; loop ++)
+	{
+		if (program_table [loop].p_offset > addr_to_index (insertion_addr))
+			program_table [loop].p_offset += size;
+
+		if (program_table [loop].p_vaddr > insertion_addr)
+			program_table [loop].p_vaddr += size;
+
+		if (program_table [loop].p_offset < addr_to_index (insertion_addr) && index_to_addr (program_table [loop].p_offset) + program_table [loop].p_memsz > insertion_addr)
+		{
+			program_table [loop].p_memsz += size;
+			program_table [loop].p_filesz += size;
+		}
+	}
+}
+
 void fix_section_table (unsigned int insertion_addr, int size)
 {
 	int loop = 0;
@@ -82,6 +120,8 @@ char* insert_target (unsigned int insertion_addr, int size, char* insertion_buf)
 	int loop = 0;
 	int loop2 = 0;
 
+	fix_header (insertion_addr, size);
+	fix_program_table (insertion_addr, size);
 	fix_section_table (insertion_addr, size);
 	fix_sym_tab (insertion_addr, size);
 	fix_relative_addrs (insertion_addr, size);
@@ -113,6 +153,8 @@ char* del_target (unsigned int start_addr, int size)
 	int loop = 0;
 	int loop2 = 0;
 
+	fix_header (start_addr, -1*size);
+	fix_program_table (start_addr, -1*size);
 	fix_section_table (start_addr, -1*size);
 	fix_sym_tab (start_addr, -1*size);
 	fix_relative_addrs (start_addr, -1*size);
@@ -123,9 +165,9 @@ char* del_target (unsigned int start_addr, int size)
 		new_file_buf [loop] = file_buf [loop];
 
 	loop += size;
-	for (loop2; loop2 < file_size - size; loop2 ++)
+	for (loop2 = addr_to_index (start_addr); loop2 < file_size - size; loop2 ++)
 	{
-		new_file_buf [loop] = file_buf [loop2];
+		new_file_buf [loop2] = file_buf [loop];
 		loop ++;
 	}
 
@@ -180,6 +222,7 @@ void main (int argc, char** argv)
 		fclose (output);
 		free (input_buf);
 		free (output_buf);
+		elf_parser_cleanup ();
 	}
 	else if (!strcmp (argv [1], "-d"))
 	{
@@ -198,10 +241,11 @@ void main (int argc, char** argv)
 		output_buf = del_target (start_addr, size_of_deletion);
 		output = fopen (argv [2], "w+");
 		fseek (output, 0, SEEK_SET);
-		fwrite (output_buf, 1, file_size + input_file_size, output);
+		fwrite (output_buf, 1, file_size - size_of_deletion, output);
 
 		fclose (output);
 		free (output_buf);
+		elf_parser_cleanup ();
 	}
 	else
 		printf ("Invalid option %s\n", argv [1]);

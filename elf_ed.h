@@ -25,6 +25,8 @@
 #include <libdis.h>
 #include "program.h"
 
+void fix_header (unsigned int insertion_addr, int size);
+void fix_program_table (unsigned int insertion_addr, int size);
 void fix_section_table (unsigned int insertion_addr, int size);
 void fix_sym_tab (unsigned int insertion_addr, int size);
 void fix_relative_addrs (unsigned int insertion_addr, int size);

@@ -24,7 +24,7 @@
 CFLAGS=-O2
 mrproper: triad clean
 debug: CFLAGS=-g
-debug: triad spider
+debug: triad spider elf_ed
 triad: main.o program.o jump_block.o function.o var.o lang_gen.o string_hash.o
 	gcc $(CFLAGS) main.o program.o jump_block.o function.o var.o lang_gen.o string_hash.o -o triad -ldisasm
 sys_tests: test arith_test control_flow_test
