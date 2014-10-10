@@ -52,23 +52,10 @@ void get_entry_point (void)
 
 void get_section_names (void)
 {
-	int loop = 0;
-	unsigned int section_table_index;
 	Elf32_Shdr* section_table;
 
-	section_table_index = ((Elf32_Ehdr*)&(file_buf [0]))->e_shoff; //Use level hacking to get offset to section header table from elf header
-	section_table = (Elf32_Shdr*)&(file_buf [section_table_index]); //Use level hacking to get section header
-
-	loop ++;
-	while (strcmp (file_buf + section_table [loop].sh_offset + section_table [loop].sh_name, ".shstrtab") && loop < num_sections)
-		loop ++;
-
-	if (loop >= num_sections)
-	{
-		printf ("CRITICAL ERROR: No section names found.\nProgram failed to find .shstrtab\n");
-		exit (1);
-	}
-	section_string_table = file_buf + section_table [loop].sh_offset;
+	section_table = (Elf32_Shdr*)&(file_buf [((Elf32_Ehdr*)&(file_buf [0]))->e_shoff]);
+	section_string_table = file_buf + section_table [((Elf32_Ehdr*)file_buf)->e_shstrndx].sh_offset;
 }
 
 void get_num_sections (void)
@@ -97,7 +84,7 @@ void get_text (void)
 	}
 	text_offset = section_table [loop].sh_offset; //Get offset in bytes from beginning of file to .text
 	text_addr = section_table [loop].sh_addr; //Get virtual memory address of .text
-	end_of_text = section_table [loop].sh_offset;
+	end_of_text = section_table [loop].sh_offset; //This doesn't appear anywhere else in the elf parser, but it's useful for the elf editor
 }
 
 void get_syms (void)
@@ -192,6 +179,7 @@ void get_dynstrs (void)
 		dynamic_string_table = &(file_buf [section_table [loop].sh_offset]);
 }
 
+//NOTE: this does not get the strings for section names. That is in .shstrtab. See: get_section_names ()
 void get_strs (void)
 {
 	int loop = 0;
