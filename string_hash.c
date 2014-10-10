@@ -41,7 +41,7 @@ void add_string_entry (unsigned int offset, char* string)
 			unsigned long long old_size = string_table_size;
 			string_table_size = ((offset+1) * sizeof (char*))*4;
 			string_hash_table = realloc (string_hash_table, string_table_size);
-			bzero ((char**)((unsigned long long)string_hash_table + (unsigned long long)old_size), string_table_size-old_size);
+			bzero (string_hash_table + old_size, string_table_size-old_size);
 		}
 
 		string_hash_table [offset] = string;

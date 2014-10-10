@@ -63,143 +63,51 @@ void get_num_sections (void)
 	num_sections = ((Elf32_Ehdr*)&(file_buf [0]))->e_shnum;
 }
 
-//Get information about .text section
-void get_text (void)
+void parse_sections (void)
 {
 	int loop = 0;
 	unsigned int section_table_index;
 	Elf32_Shdr* section_table;
+	char* current_name;
+	unsigned int current_offset;
 
-	section_table_index = ((Elf32_Ehdr*)&(file_buf [0]))->e_shoff; //Use level hacking to get offset to section header table from elf header
-	section_table = (Elf32_Shdr*)&(file_buf [section_table_index]); //Use level hacking to get section header
+	text_offset = 0;
+	text_addr = 0;
+	end_of_text = 0;
+	symbol_table = 0;
+	symbol_table_end = 0;
+	dynamic_symbol_table = 0;
+	relocation_table = 0;
+	dynamic_string_table = 0;
+	string_table = 0;
 
-	loop ++;
-	while (strcmp (section_string_table + section_table [loop].sh_name, ".text") && loop < num_sections)
-		loop ++;
+	section_table_index = ((Elf32_Ehdr*)&(file_buf [0]))->e_shoff;
+	section_table = (Elf32_Shdr*)&(file_buf [section_table_index]);	
 
-	if (loop >= num_sections)
+	for (loop; loop < num_sections; loop ++)
 	{
-		printf ("CRITICAL ERROR: Executable data not found.\nProgram failed to find .text\n");
-		exit (1);
+		current_name = section_string_table + section_table [loop].sh_name;
+		current_offset = section_table [loop].sh_offset;
+		if (!strcmp (current_name, ".text"))
+		{
+			text_offset = section_table [loop].sh_offset;
+			text_addr = section_table [loop].sh_addr;
+			end_of_text = text_offset + section_table [loop].sh_size;
+		}
+		if (!strcmp (current_name, ".symtab"))
+		{
+			symbol_table = (Elf32_Sym*)(file_buf + current_offset);
+			symbol_table_end = (Elf32_Sym*)((char*)symbol_table + section_table [loop].sh_size);
+		}
+		if (!strcmp (current_name, ".dynsym"))
+			dynamic_symbol_table = (Elf32_Sym*)(file_buf + current_offset);
+		if (!strcmp (current_name, ".rel.plt"))
+			relocation_table = (Elf32_Rel*)(file_buf + current_offset);
+		if (!strcmp (current_name, ".dynstr"))
+			dynamic_string_table = file_buf + current_offset;
+		if (!strcmp (current_name, ".strtab"))
+			string_table = file_buf + current_offset;
 	}
-	text_offset = section_table [loop].sh_offset; //Get offset in bytes from beginning of file to .text
-	text_addr = section_table [loop].sh_addr; //Get virtual memory address of .text
-	end_of_text = section_table [loop].sh_offset; //This doesn't appear anywhere else in the elf parser, but it's useful for the elf editor
-}
-
-void get_syms (void)
-{
-	int loop = 0;
-	unsigned int section_table_index;
-	Elf32_Shdr* section_table;
-
-	section_table_index = ((Elf32_Ehdr*)&(file_buf [0]))->e_shoff; //Use level hacking to get offset to section header table from elf header
-	section_table = (Elf32_Shdr*)&(file_buf [section_table_index]); //Use level hacking to get section header
-
-	loop ++;
-	while (strcmp ((char*)(section_string_table + (unsigned long long)section_table [loop].sh_name), ".symtab") && loop < num_sections)
-		loop ++;
-
-	if (loop >= num_sections)
-	{
-		printf ("WARNING: Symbols not found.\nProgram failed to find symbol table.\nSymbol table was likely stripped entirely.\n");
-		symbol_table = NULL;
-		symbol_table_end = NULL;
-	}
-	else
-	{
-		symbol_table = (Elf32_Sym*)&(file_buf [section_table [loop].sh_offset]);
-		symbol_table_end = (Elf32_Sym*)&(file_buf [section_table [loop+1].sh_offset]);
-	}
-}
-
-void get_dynsyms (void)
-{
-	int loop = 0;
-	unsigned int section_table_index;
-	Elf32_Shdr* section_table;
-
-	section_table_index = ((Elf32_Ehdr*)&(file_buf [0]))->e_shoff; //Use level hacking to get offset to section header table from elf header
-	section_table = (Elf32_Shdr*)&(file_buf [section_table_index]); //Use level hacking to get section header
-
-	loop ++;
-	while (section_table [loop].sh_type != SHT_DYNSYM && loop < num_sections)
-		loop ++;
-
-	if (loop >= num_sections)
-	{
-		printf ("WARNING: Dynamic linking symbols not found.\nProgram failed to find dynamic symbol table.\nTarget likely does not use external libraries.\n");
-		dynamic_symbol_table = NULL;
-	}
-	else
-		dynamic_symbol_table = (Elf32_Sym*)&(file_buf [section_table [loop].sh_offset]);
-}
-
-void get_relocs (void)
-{
-	int loop = 0;
-	unsigned int section_table_index;
-	Elf32_Shdr* section_table;
-
-	section_table_index = ((Elf32_Ehdr*)&(file_buf [0]))->e_shoff; //Use level hacking to get offset to section header table from elf header
-	section_table = (Elf32_Shdr*)&(file_buf [section_table_index]); //Use level hacking to get section header
-
-	loop ++;
-	while (strcmp (section_string_table + section_table [loop].sh_name, ".rel.plt") && loop < num_sections)
-		loop ++;
-
-	if (loop >= num_sections)
-	{
-		printf ("WARNING: PLT relocation data not found.\nProgram failed to find .rel.plt\nTarget likely does not use external libraries\n");
-		relocation_table = NULL;
-	}
-	else
-		relocation_table = (Elf32_Rel*)&(file_buf [section_table [loop].sh_offset]);
-}
-
-void get_dynstrs (void)
-{
-	int loop = 0;
-	unsigned int section_table_index;
-	Elf32_Shdr* section_table;
-
-	section_table_index = ((Elf32_Ehdr*)&(file_buf [0]))->e_shoff; //Use level hacking to get offset to section header table from elf header
-	section_table = (Elf32_Shdr*)&(file_buf [section_table_index]); //Use level hacking to get section header
-
-	loop ++;
-	while (strcmp (section_string_table + section_table [loop].sh_name, ".dynstr") && loop < num_sections)
-		loop ++;
-
-	if (loop >= num_sections)
-	{
-		printf ("WARNING: Dynamic symbol string data not found.\nProgram failed to find .dynstr\nTarget likely does not use external libraries\n");
-		dynamic_string_table = NULL;
-	}
-	else
-		dynamic_string_table = &(file_buf [section_table [loop].sh_offset]);
-}
-
-//NOTE: this does not get the strings for section names. That is in .shstrtab. See: get_section_names ()
-void get_strs (void)
-{
-	int loop = 0;
-	unsigned int section_table_index;
-	Elf32_Shdr* section_table;
-
-	section_table_index = ((Elf32_Ehdr*)&(file_buf [0]))->e_shoff; //Use level hacking to get offset to section header table from elf header
-	section_table = (Elf32_Shdr*)&(file_buf [section_table_index]); //Use level hacking to get section header
-
-	loop ++;
-	while (strcmp (section_string_table + section_table [loop].sh_name, ".strtab") && loop < num_sections)
-		loop ++;
-
-	if (loop >= num_sections)
-	{
-		printf ("WARNING: Symbol string data not found.\nProgram failed to find .strtab\nTarget likely had all symbols stripped\n");
-		string_table = NULL;
-	}
-	else
-		string_table = &(file_buf [section_table [loop].sh_offset]);
 }
 
 Elf32_Sym* find_sym (Elf32_Sym* sym_tab, unsigned int addr)
@@ -243,7 +151,7 @@ void load_string_hashes (void)
 	{
 		if (symbol_table [loop].st_name && symbol_table [loop].st_value)
 		{
-			add_string_entry (symbol_table [loop].st_value - 0x8048000, (char*)(string_table + (unsigned long long)symbol_table [loop].st_name));
+			add_string_entry (symbol_table [loop].st_value - 0x8048000, string_table + symbol_table [loop].st_name);
 			if (!strcmp (string_table + symbol_table [loop].st_name, "main"))
 				main_addr = symbol_table [loop].st_value;
 		}
@@ -268,12 +176,7 @@ void parse_elf (char* file_name)
 	init_file_buf (file_name);
 	get_num_sections ();
 	get_section_names ();
-	get_text ();
-	get_syms ();
-	get_dynsyms ();
-	get_relocs ();
-	get_dynstrs ();
-	get_strs ();
+	parse_sections ();
 	get_entry_point ();
 	load_string_hashes ();
 }
