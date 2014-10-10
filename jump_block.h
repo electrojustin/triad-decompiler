@@ -25,7 +25,7 @@
 #include <stddef.h>
 #include <libdis.h>
 
-#include "program.h"
+#include "elf_parser.h"
 #include "string_hash.h"
 
 #pragma once

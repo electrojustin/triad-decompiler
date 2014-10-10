@@ -25,8 +25,8 @@ CFLAGS=-O2
 mrproper: triad clean
 debug: CFLAGS=-g
 debug: triad spider elf_ed
-triad: main.o program.o jump_block.o function.o var.o lang_gen.o string_hash.o
-	gcc $(CFLAGS) main.o program.o jump_block.o function.o var.o lang_gen.o string_hash.o -o triad -ldisasm
+triad: main.o elf_parser.o jump_block.o function.o var.o lang_gen.o string_hash.o
+	gcc $(CFLAGS) main.o elf_parser.o jump_block.o function.o var.o lang_gen.o string_hash.o -o triad -ldisasm
 sys_tests: test arith_test control_flow_test
 test: test.c
 	gcc -g -m32 test.c -o test
@@ -34,21 +34,19 @@ arith_test: arith_test.c
 	gcc -g -m32 arith_test.c -o arith_test
 control_flow_test: control_flow_test.c
 	gcc -g -m32 control_flow_test.c -o control_flow_test
-spider: spider.o jump_block.o function.o program.o string_hash.o
-	gcc $(CFLAGS) spider.o jump_block.o function.o program.o string_hash.o -o spider -ldisasm
-elf_ed: elf_ed_main.o elf_ed.o program.o string_hash.o jump_block.o
-	gcc $(CFLAGS) elf_ed_main.o elf_ed.o program.o string_hash.o jump_block.o -o elf_ed -ldisasm
-elf_ed.o: elf_ed.c elf_ed.h program.h
+elf_ed: elf_ed_main.o elf_ed.o elf_parser.o string_hash.o jump_block.o
+	gcc $(CFLAGS) elf_ed_main.o elf_ed.o elf_parser.o string_hash.o jump_block.o -o elf_ed -ldisasm
+elf_ed.o: elf_ed.c elf_ed.h elf_parser.h
 	gcc $(CFLAGS) -c elf_ed.c
-elf_ed_main.o: elf_ed_main.c elf_ed.h program.h
+elf_ed_main.o: elf_ed_main.c elf_ed.h elf_parser.h
 	gcc $(CFLAGS) -c elf_ed_main.c
-main.o: main.c program.h function.h
+main.o: main.c elf_parser.h function.h
 	gcc $(CFLAGS) -c main.c
-spider.o: spider.c program.h function.h
+spider.o: spider.c elf_parser.h function.h
 	gcc $(CFLAGS) -c spider.c
-program.o: string_hash.h program.h program.c
-	gcc $(CFLAGS) -c program.c
-jump_block.o: jump_block.c jump_block.h datastructs.h program.h
+elf_parser.o: string_hash.h elf_parser.h elf_parser.c
+	gcc $(CFLAGS) -c elf_parser.c
+jump_block.o: jump_block.c jump_block.h datastructs.h elf_parser.h
 	gcc $(CFLAGS) -c jump_block.c
 function.o: function.c function.h datastructs.h jump_block.h
 	gcc $(CFLAGS) -c function.c
@@ -59,6 +57,6 @@ lang_gen.o: lang_gen.c lang_gen.h var.h function.h jump_block.h
 string_hash.o: string_hash.h string_hash.c
 	gcc $(CFLAGS) -c string_hash.c
 clean:
-	rm main.o var.o lang_gen.o jump_block.o program.o function.o string_hash.o
+	rm main.o var.o lang_gen.o jump_block.o elf_parser.o function.o string_hash.o
 install:
 	install ./triad /usr/bin/triad

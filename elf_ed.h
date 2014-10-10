@@ -23,7 +23,7 @@
 
 
 #include <libdis.h>
-#include "program.h"
+#include "elf_parser.h"
 
 void fix_header (unsigned int insertion_addr, int size);
 void fix_program_table (unsigned int insertion_addr, int size);

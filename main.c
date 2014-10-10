@@ -25,7 +25,7 @@
 #include <stdlib.h>
 #include <libdis.h>
 
-#include "program.h"
+#include "elf_parser.h"
 #include "lang_gen.h"
 
 int main (int argc, char** argv)

@@ -24,7 +24,7 @@
 
 #include <stdlib.h>
 
-#include "program.h"
+#include "elf_parser.h"
 
 //Load file into memory
 void init_file_buf (char* file_name)

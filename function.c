@@ -263,7 +263,7 @@ void resolve_calls_help (jump_block* benefactor, function* parent)
 			if (benefactor->calls [i] < text_addr) //Likely a reference to plt, data isn't in this file so don't bother
 				continue;
 			if (addr_to_index (benefactor->calls [i]) >= file_size) //Critical error: should not call outside of address space
-				exit (1);
+				continue;
 			to_link = init_function (malloc (sizeof (function)), benefactor->calls [i], file_buf, 0);
 			link (parent, to_link);
 			resolve_conditional_jumps (parent->next->jump_block_list);
