@@ -144,6 +144,7 @@ Elf32_Sym* find_reloc_sym (unsigned int addr)
 		return &(dynamic_symbol_table [relocation_table [loop].r_info >> 8]);
 }
 
+//Load symbols into an associative array for quick lookup
 void load_string_hashes (void)
 {
 	if (!symbol_table || !string_table)
@@ -178,7 +179,19 @@ unsigned int index_to_addr (int index)
 
 void parse_elf (char* file_name)
 {
+	Elf32_Ehdr* header;
+
 	init_file_buf (file_name);
+
+	//Sanity check
+	header = (Elf32_Ehdr*)file_buf;
+	if (header->e_ident [0] != 0x7f || header->e_ident [1] != 'E' || header->e_ident [2] != 'L' || header->e_ident [3] != 'F')
+	{
+		elf_parser_cleanup ();
+		printf ("CRITICAL ERROR: Not an ELF file.\n");
+		exit (-1);
+	}
+
 	get_num_sections ();
 	get_section_names ();
 	parse_sections ();
