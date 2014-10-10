@@ -36,6 +36,7 @@ unsigned int end_of_text;
 unsigned int text_addr; //Virtual memory address .text is loaded into
 unsigned int entry_point; //Entry point of executable. NOTE: probably don't want to start disassembling here
 int num_sections;
+int num_relocs;
 Elf32_Sym* symbol_table;
 Elf32_Sym* symbol_table_end;
 Elf32_Sym* dynamic_symbol_table;

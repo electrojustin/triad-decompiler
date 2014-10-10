@@ -50,6 +50,7 @@ void get_entry_point (void)
 	entry_point = ((Elf32_Ehdr*)&(file_buf [0]))->e_entry;
 }
 
+//Gets the names of the sections from .shstrtab
 void get_section_names (void)
 {
 	Elf32_Shdr* section_table;
@@ -63,6 +64,7 @@ void get_num_sections (void)
 	num_sections = ((Elf32_Ehdr*)&(file_buf [0]))->e_shnum;
 }
 
+//Finds information about a number of sections of interest by looping through the section table and looking for specific names
 void parse_sections (void)
 {
 	int loop = 0;
@@ -88,24 +90,27 @@ void parse_sections (void)
 	{
 		current_name = section_string_table + section_table [loop].sh_name;
 		current_offset = section_table [loop].sh_offset;
-		if (!strcmp (current_name, ".text"))
+		if (!strcmp (current_name, ".text")) //The part with the code
 		{
 			text_offset = section_table [loop].sh_offset;
 			text_addr = section_table [loop].sh_addr;
 			end_of_text = text_offset + section_table [loop].sh_size;
 		}
-		if (!strcmp (current_name, ".symtab"))
+		if (!strcmp (current_name, ".symtab")) //Contains "symbols" for the program.
 		{
 			symbol_table = (Elf32_Sym*)(file_buf + current_offset);
 			symbol_table_end = (Elf32_Sym*)((char*)symbol_table + section_table [loop].sh_size);
 		}
-		if (!strcmp (current_name, ".dynsym"))
+		if (!strcmp (current_name, ".dynsym")) //Contains symbols in external libraries to be used by the program
 			dynamic_symbol_table = (Elf32_Sym*)(file_buf + current_offset);
-		if (!strcmp (current_name, ".rel.plt"))
+		if (!strcmp (current_name, ".rel.plt")) //Contains relocations, which reference dynamic symbols of functions in external libraries called by the program
+		{
 			relocation_table = (Elf32_Rel*)(file_buf + current_offset);
-		if (!strcmp (current_name, ".dynstr"))
+			num_relocs = section_table [loop].sh_size / section_table [loop].sh_entsize;
+		}
+		if (!strcmp (current_name, ".dynstr")) //Strings for the dynamic symbols
 			dynamic_string_table = file_buf + current_offset;
-		if (!strcmp (current_name, ".strtab"))
+		if (!strcmp (current_name, ".strtab")) //Strings for the regular symbols
 			string_table = file_buf + current_offset;
 	}
 }
@@ -130,7 +135,7 @@ Elf32_Sym* find_reloc_sym (unsigned int addr)
 {
 	int loop = 0;
 
-	while (relocation_table [loop].r_offset != addr && loop*sizeof (Elf32_Rel) + (unsigned long long)relocation_table - (unsigned long long)file_buf < file_size)
+	while (relocation_table [loop].r_offset != addr && loop < num_relocs)
 		loop ++;
 
 	if (loop >= file_size)
