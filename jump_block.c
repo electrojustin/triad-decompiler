@@ -171,47 +171,6 @@ void search_start_addrs (jump_block* to_test, struct search_params arg)
 		*arg.ret = to_test;
 }
 
-//Add conditional jumps to the list of jumps
-void resolve_conditional_jumps (jump_block* benefactor)
-{
-	int i = 0;
-	jump_block* ret;
-	struct search_params arg;
-	arg.ret = (void**)&ret;
-	jump_block* to_link;
-	for (i; i < benefactor->num_conditional_jumps; i ++)
-	{
-		arg.key = benefactor->conditional_jumps [i];
-		ret = NULL;
-		list_loop (search_start_addrs, benefactor, benefactor, arg);
-		if (!ret && benefactor->conditional_jumps [i] >= text_addr) //Redundancy and sanity check; don't add the same block multiple times and don't start disassembling plt
-		{
-			to_link = init_jump_block (malloc (sizeof (jump_block)), benefactor->conditional_jumps [i]);
-			link (benefactor, to_link);
-		}
-	}
-}
-
-//Print the dissassembly of the given jump block
-void print_jump_block (jump_block* to_print)
-{
-	int i;
-	char line [100];
-	printf ("jump block %p:\n", to_print->start);
-	for (i = 0; i < to_print->num_instructions; i ++)
-	{
-		x86_format_insn (&(to_print->instructions [i]), line, 100, att_syntax);
-		printf ("%s\n", line);
-	}
-	printf ("\n");
-}
-
-//Go through entire jump block list and print out the jump blocks individually
-void print_jump_block_list (jump_block* to_print)
-{
-	list_loop (print_jump_block, to_print, to_print);
-}
-
 x86_insn_t* get_insn_by_addr (jump_block* parent, unsigned int addr)
 {
 	int i;

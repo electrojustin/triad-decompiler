@@ -33,137 +33,57 @@ function* init_function (function* to_init, unsigned int start_addr, char* block
 
 	//The following is code meant for the spider disassembler (currently inoperational)
 	//See spider.c
-	if (is_spider)
+	jump_block* root;
+	jump_block* current;
+	jump_block* temp;
+
+	root = init_jump_block (malloc (sizeof (jump_block)), start_addr);
+	current = root;
+
+	//Find all jump blocks
+	while (num_push_ebp != 2)
 	{
-		int num_instructions = 0; //TOTAL number of instructions in all jump blocks to be spliced
-		int num_conditional_jumps = 0; //TOTAL number of conditional jumps in all jump blocks to be spliced
-		int num_calls = 0; //TOTAL number of function calls in all jump blocks to be spliced
-		int next_addr; //Start address of next jump block
-		jump_block* root; //Final resting place for unconditional jump blocks
-		jump_block* current_jump_block;
-		jump_block* to_link;
-
-		current_jump_block = init_jump_block (malloc (sizeof(jump_block)), start_addr);
-		num_instructions += current_jump_block->num_instructions - 1;
-		num_conditional_jumps += current_jump_block->num_conditional_jumps;
-		num_calls += current_jump_block->num_calls;
-
-		//If final instruction of the jump block is an unconditional jump, follow it!
-		while (current_jump_block->instructions [current_jump_block->num_instructions-1].mnemonic [0] == 'j' && current_jump_block->instructions [current_jump_block->num_instructions-1].operands->op.datatype < 6) //Ignore unconditional jumps to stored addresses
-		{
-			next_addr = relative_insn (&(current_jump_block->instructions [current_jump_block->num_instructions-1]), current_jump_block->instructions [current_jump_block->num_instructions-1].size + index_to_addr (current_jump_block->instructions [current_jump_block->num_instructions-1].addr));
-
-			if (next_addr >= current_jump_block->start && next_addr <= current_jump_block->end) //Don't follow loops for obvious reasons
-			{
-				next_addr -= current_jump_block->instructions [current_jump_block->num_instructions-1].operands->op.data.dword; //Set next address to rip and ignore jump altogether
-				num_instructions ++; //Include this jump instruction, it's an integral part of the program
-				current_jump_block->flags |= IS_LOOP; //Set flag so splicing function doesn't have to reperform these tests
-			}
-
-			if (addr_to_index (next_addr) >= file_size || next_addr < text_addr) //Program should not unconditionally jump outside of executable
-				exit (1);
-			to_link = init_jump_block (malloc (sizeof (jump_block)), next_addr);
-			link (current_jump_block, to_link);
-			current_jump_block = current_jump_block->next;
-			num_instructions += current_jump_block->num_instructions - 1;
-			num_conditional_jumps += current_jump_block->num_conditional_jumps;
-			num_calls += current_jump_block->num_calls;
-		}
-
-		num_instructions ++;
-		if (current_jump_block->next) //Make sure to start stitching the jump blocks together with the first block
-			current_jump_block = current_jump_block->next;
-
-		//Initialize root to accomodate all of the composite jump blocks
-		root = malloc (sizeof (jump_block));
-		root->next = NULL;
-		root->start = current_jump_block->start;
-		root->end = current_jump_block->end;
-		root->num_instructions = num_instructions;
-		root->instructions_buf_size = num_instructions * sizeof (x86_insn_t);
-		if (root->instructions_buf_size)
-			root->instructions = malloc (root->instructions_buf_size);
-		root->num_conditional_jumps = num_conditional_jumps;
-		root->conditional_jumps_buf_size = num_conditional_jumps * sizeof (unsigned int);
-		if (root->conditional_jumps_buf_size)
-			root->conditional_jumps = malloc (root->conditional_jumps_buf_size);
-		root->num_calls = num_calls;
-		root->calls_buf_size = num_calls * sizeof (unsigned int);
-		if (root->calls_buf_size)
-			root->calls = malloc ((root->calls_buf_size & (~7)) + 8);
-
-		//Start splicing
-		int instruction_index = 0;
-		int cond_jump_index = 0;
-		int calls_index = 0;
-		struct splice_params arg;
-		arg.to_form = root;
-		arg.instruction_index = &instruction_index;
-		arg.cond_jump_index = &cond_jump_index;
-		arg.calls_index = &calls_index;
-		list_loop (splice_jump_blocks, current_jump_block, current_jump_block, arg);
-
-		to_init->jump_block_list = root;
-		to_init->next = NULL;
-
-		//Cleanup the memory mess we've made with current_jump_block
-		jump_block_list_cleanup (current_jump_block, 0); //Don't delete the dynamically allocated operands yet
+		temp = init_jump_block (malloc (sizeof (jump_block)), current->end);
+		link (current, temp);
+		current = current->next;
 	}
-	else
+	num_push_ebp = 0;
+
+	//Get jump addresses
+	to_init->num_jump_addrs = 0;
+	to_init->jump_addrs_buf_size = 8 * sizeof (unsigned int);
+	to_init->jump_addrs = malloc (to_init->jump_addrs_buf_size);
+	to_init->orig_addrs = malloc (to_init->jump_addrs_buf_size);
+	list_loop (resolve_jumps, root, root, to_init);
+
+	//Memory management for "}" placement algorithms
+	to_init->num_dups = 0;
+	to_init->dup_targets_buf_size = 8 * sizeof (unsigned int);
+	to_init->dup_targets = malloc (to_init->dup_targets_buf_size);
+	to_init->else_starts = malloc (to_init->dup_targets_buf_size);
+	to_init->pivots = malloc (to_init->dup_targets_buf_size);
+
+	//Split jump blocks 
+	struct search_params params;
+	int i;
+
+	for (i = 0; i < to_init->num_jump_addrs; i ++)
 	{
-		jump_block* root;
-		jump_block* current;
-		jump_block* temp;
-
-		root = init_jump_block (malloc (sizeof (jump_block)), start_addr);
-		current = root;
-
-		//Find all jump blocks
-		while (num_push_ebp != 2)
-		{
-			temp = init_jump_block (malloc (sizeof (jump_block)), current->end);
-			link (current, temp);
-			current = current->next;
-		}
-		num_push_ebp = 0;
-
-		//Get jump addresses
-		to_init->num_jump_addrs = 0;
-		to_init->jump_addrs_buf_size = 8 * sizeof (unsigned int);
-		to_init->jump_addrs = malloc (to_init->jump_addrs_buf_size);
-		to_init->orig_addrs = malloc (to_init->jump_addrs_buf_size);
-		list_loop (resolve_jumps, root, root, to_init);
-
-		//Memory management for "}" placement algorithms
-		to_init->num_dups = 0;
-		to_init->dup_targets_buf_size = 8 * sizeof (unsigned int);
-		to_init->dup_targets = malloc (to_init->dup_targets_buf_size);
-		to_init->else_starts = malloc (to_init->dup_targets_buf_size);
-		to_init->pivots = malloc (to_init->dup_targets_buf_size);
-
-		//Split jump blocks 
-		struct search_params params;
-		int i;
-
-		for (i = 0; i < to_init->num_jump_addrs; i ++)
-		{
-			current = NULL;
-			params.ret = (void**)&current;
-			params.key = to_init->jump_addrs [i];
-			list_loop (search_start_addrs, root, root, params);
+		current = NULL;
+		params.ret = (void**)&current;
+		params.key = to_init->jump_addrs [i];
+		list_loop (search_start_addrs, root, root, params);
 	
-			if (!current)
-			{
-				printf ("Error: invalid jump instruction at %p\n", to_init->orig_addrs [i]);
-				exit (1);
-			}
-		
-			split_jump_blocks (current, params.key);
+		if (!current)
+		{
+			printf ("Error: invalid jump instruction at %p\n", to_init->orig_addrs [i]);
+			exit (1);
 		}
-
-		to_init->jump_block_list = root;
+	
+		split_jump_blocks (current, params.key);
 	}
 
+	to_init->jump_block_list = root;
 	return to_init;
 }
 
@@ -266,7 +186,6 @@ void resolve_calls_help (jump_block* benefactor, function* parent)
 				continue;
 			to_link = init_function (malloc (sizeof (function)), benefactor->calls [i], file_buf, 0);
 			link (parent, to_link);
-			resolve_conditional_jumps (parent->next->jump_block_list);
 		}
 	}
 }
@@ -282,20 +201,6 @@ void resolve_calls (function* benefactor)
 		list_loop (resolve_calls_help, benefactor->jump_block_list, benefactor->jump_block_list, benefactor);
 		benefactor = benefactor->next;
 	} while (benefactor != start && benefactor);
-}
-
-//Print disassembly of every jump block in a the given function
-void print_function (function* to_print)
-{
-	printf ("function %p:\n{\n", to_print->start_addr);
-	print_jump_block_list (to_print->jump_block_list);
-	printf ("}\n\n");
-}
-
-//Print a list of functions
-void print_function_list (function* to_print)
-{
-	list_loop (print_function, to_print, to_print);
 }
 
 void split_jump_blocks (jump_block* to_split, unsigned int addr)
