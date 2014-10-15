@@ -43,7 +43,7 @@ function* init_function (function* to_init, unsigned int start_addr, char* block
 		jump_block* current_jump_block;
 		jump_block* to_link;
 
-		current_jump_block = init_jump_block (malloc (sizeof(jump_block)), start_addr, block, 1);
+		current_jump_block = init_jump_block (malloc (sizeof(jump_block)), start_addr);
 		num_instructions += current_jump_block->num_instructions - 1;
 		num_conditional_jumps += current_jump_block->num_conditional_jumps;
 		num_calls += current_jump_block->num_calls;
@@ -62,7 +62,7 @@ function* init_function (function* to_init, unsigned int start_addr, char* block
 
 			if (addr_to_index (next_addr) >= file_size || next_addr < text_addr) //Program should not unconditionally jump outside of executable
 				exit (1);
-			to_link = init_jump_block (malloc (sizeof (jump_block)), next_addr, block, 1);
+			to_link = init_jump_block (malloc (sizeof (jump_block)), next_addr);
 			link (current_jump_block, to_link);
 			current_jump_block = current_jump_block->next;
 			num_instructions += current_jump_block->num_instructions - 1;
@@ -115,13 +115,13 @@ function* init_function (function* to_init, unsigned int start_addr, char* block
 		jump_block* current;
 		jump_block* temp;
 
-		root = init_jump_block (malloc (sizeof (jump_block)), start_addr, file_buf, 0);
+		root = init_jump_block (malloc (sizeof (jump_block)), start_addr);
 		current = root;
 
 		//Find all jump blocks
 		while (num_push_ebp != 2)
 		{
-			temp = init_jump_block (malloc (sizeof (jump_block)), current->end, file_buf, 0);
+			temp = init_jump_block (malloc (sizeof (jump_block)), current->end);
 			link (current, temp);
 			current = current->next;
 		}
@@ -311,7 +311,7 @@ void split_jump_blocks (jump_block* to_split, unsigned int addr)
 	while (index_to_addr (to_split->instructions [i].addr) != addr)
 		i ++;
 
-	new_block = init_jump_block (malloc (sizeof (jump_block)), index_to_addr (to_split->instructions [i].addr), file_buf, 0);
+	new_block = init_jump_block (malloc (sizeof (jump_block)), index_to_addr (to_split->instructions [i].addr));
 
 	for (j = i; j < to_split->num_instructions; j++)
 	{

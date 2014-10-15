@@ -30,7 +30,7 @@
 
 char num_push_ebp = 0;
 
-jump_block* init_jump_block (jump_block* to_init, unsigned int start_addr, char* block, char is_spider)
+jump_block* init_jump_block (jump_block* to_init, unsigned int start_addr)
 {
 	to_init->instructions = NULL;
 	to_init->calls = NULL;
@@ -70,40 +70,13 @@ jump_block* init_jump_block (jump_block* to_init, unsigned int start_addr, char*
 		}
 
 		//Partially disassemble the instruction into machine readable format
-		size = x86_disasm (block, file_size, 0, addr_to_index (current), &instruction);
+		size = x86_disasm (file_buf, file_size, 0, addr_to_index (current), &instruction);
 		to_init->instructions [num_instructions-1] = instruction;
 		current += size;
 
 		//Identify references to conditional jump blocks and function calls for later disassembly.
 		if (instruction.operands && instruction.operands->op.datatype < 6) //Please don't go chasing rax...
 		{
-			if (is_spider)
-			{
-				//Keep track of conditional jumps
-				if (instruction.mnemonic [0] == 'j' && instruction.mnemonic [1] != 'm')
-				{
-					num_conditional_jumps ++;
-
-					//Dynamic memory allocation stuff here
-					if (num_conditional_jumps - 1)
-					{
-						if (num_conditional_jumps * sizeof (unsigned int) > to_init->conditional_jumps_buf_size)
-						{
-							to_init->conditional_jumps_buf_size *= 2;
-							to_init->conditional_jumps = realloc (to_init->conditional_jumps, 2 * to_init->conditional_jumps_buf_size);
-						}
-					}
-					else
-					{
-						to_init->conditional_jumps_buf_size = 8 * sizeof (unsigned int);
-						to_init->conditional_jumps = malloc (to_init->conditional_jumps_buf_size);
-					}
-
-					//Add operand address to conditional jump buffer
-					to_init->conditional_jumps [num_conditional_jumps-1] = relative_insn (&instruction, current);
-				}
-			}
-
 			//Keep track of calls
 			if (instruction.mnemonic [0] == 'c' && instruction.mnemonic [1] == 'a')
 			{
@@ -134,7 +107,7 @@ jump_block* init_jump_block (jump_block* to_init, unsigned int start_addr, char*
 		if (instruction.addr > file_size || (string_hash_table && get_entry (current-0x8048000)))
 			num_push_ebp = 2;
 	//Stop disassembly of jump block at next unconditional jump or call
-	} while (!(instruction.mnemonic [0] == 'j' && (instruction.mnemonic [1] == 'm' || !is_spider)) && num_push_ebp != 2); //Jump block ends on jump or return
+	} while (instruction.mnemonic [0] != 'j' && num_push_ebp != 2); //Jump block ends on jump or return
 
 	//Synchronize the jump block with locals
 	to_init->end = current;
@@ -213,7 +186,7 @@ void resolve_conditional_jumps (jump_block* benefactor)
 		list_loop (search_start_addrs, benefactor, benefactor, arg);
 		if (!ret && benefactor->conditional_jumps [i] >= text_addr) //Redundancy and sanity check; don't add the same block multiple times and don't start disassembling plt
 		{
-			to_link = init_jump_block (malloc (sizeof (jump_block)), benefactor->conditional_jumps [i], file_buf, 1);
+			to_link = init_jump_block (malloc (sizeof (jump_block)), benefactor->conditional_jumps [i]);
 			link (benefactor, to_link);
 		}
 	}
