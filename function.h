@@ -52,7 +52,7 @@ struct splice_params //Throwaway parameter structure for splicing together vario
 	int* calls_index;
 };
 
-function* init_function (function* to_init, unsigned int start_addr, char* block, char is_spider);
+function* init_function (function* to_init, unsigned int start_addr);
 void splice_jump_blocks (jump_block* to_splice, struct splice_params arg);
 void split_jump_blocks (jump_block* to_split, unsigned int addr);
 void resolve_calls_help (jump_block* benefactor, function* parent);
@@ -60,6 +60,4 @@ void resolve_calls (function* benefactor);
 void cleanup_function (function* to_cleanup, char scrub_insn);
 void function_list_cleanup (function* to_cleanup, char scrub_insn);
 void search_func_start_addrs (function* to_test, struct search_params arg);
-void print_function (function* to_print);
-void print_function_list (function* to_print);
 void resolve_jumps (jump_block* to_resolve, function* benefactor);

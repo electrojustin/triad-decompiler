@@ -26,7 +26,7 @@
 #include "function.h"
 #include "datastructs.h"
 
-function* init_function (function* to_init, unsigned int start_addr, char* block, char is_spider)
+function* init_function (function* to_init, unsigned int start_addr)
 {
 	to_init->start_addr = start_addr;
 	next_flags = 0;
@@ -184,7 +184,7 @@ void resolve_calls_help (jump_block* benefactor, function* parent)
 				continue;
 			if (addr_to_index (benefactor->calls [i]) >= file_size) //Critical error: should not call outside of address space
 				continue;
-			to_link = init_function (malloc (sizeof (function)), benefactor->calls [i], file_buf, 0);
+			to_link = init_function (malloc (sizeof (function)), benefactor->calls [i]);
 			link (parent, to_link);
 		}
 	}

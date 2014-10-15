@@ -45,12 +45,12 @@ int main (int argc, char** argv)
 		{
 			beginning_address = strtoul (argv [2], NULL, 16);
 			if (beginning_address)
-				func = init_function (malloc (sizeof (function)), beginning_address, file_buf, 0);
+				func = init_function (malloc (sizeof (function)), beginning_address);
 			else
 				printf ("Error: invalid start address\n");
 		}
 		else if (main_addr)
-			func = init_function (malloc (sizeof (function)), main_addr, file_buf, 0);
+			func = init_function (malloc (sizeof (function)), main_addr);
 		else
 		{
 			printf ("Error: could not find main and no start address specified\n");
