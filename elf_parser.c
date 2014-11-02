@@ -90,28 +90,69 @@ void parse_sections (void)
 	{
 		current_name = section_string_table + section_table [loop].sh_name;
 		current_offset = section_table [loop].sh_offset;
+		if (current_name < file_buf || (unsigned long long)current_name > (unsigned long long)file_buf + file_size || current_offset < 0 || current_offset > file_size || (unsigned long long)current_offset > (unsigned long long)file_buf + file_size)
+		{
+			printf ("ERROR: Section number %d is malformed. Skipping...\n", loop);
+			continue;
+		}
 		if (!strcmp (current_name, ".text")) //The part with the code
 		{
 			text_offset = section_table [loop].sh_offset;
 			text_addr = section_table [loop].sh_addr;
 			end_of_text = text_offset + section_table [loop].sh_size;
+			if (text_offset < 0 || text_offset > file_size || end_of_text < 0 || end_of_text > file_size || (unsigned long long)text_offset > (unsigned long long)file_buf + file_size || text_offset > end_of_text)
+			{
+				printf ("CRITICAL ERROR: Malformed .text section\n");
+				exit (1);
+			}
 		}
 		if (!strcmp (current_name, ".symtab")) //Contains "symbols" for the program.
 		{
 			symbol_table = (Elf32_Sym*)(file_buf + current_offset);
 			symbol_table_end = (Elf32_Sym*)((char*)symbol_table + section_table [loop].sh_size);
+			if ((char*)symbol_table < file_buf || (unsigned long long)symbol_table > (unsigned long long)file_buf + file_size || (char*)symbol_table_end < file_buf || (unsigned long long)symbol_table_end > (unsigned long long)file_buf + file_size || symbol_table > symbol_table_end)
+			{
+				symbol_table = NULL;
+				symbol_table_end = NULL;
+				printf ("ERROR: Malformed symbol table.\n");
+			}
 		}
 		if (!strcmp (current_name, ".dynsym")) //Contains symbols in external libraries to be used by the program
+		{
 			dynamic_symbol_table = (Elf32_Sym*)(file_buf + current_offset);
+			if ((char*)dynamic_symbol_table < file_buf || (unsigned long long)dynamic_symbol_table > (unsigned long long)file_buf + file_size)
+				printf ("ERROR: Malformed dynamic symbol table.\n");
+		}
 		if (!strcmp (current_name, ".rel.plt")) //Contains relocations, which reference dynamic symbols of functions in external libraries called by the program
 		{
 			relocation_table = (Elf32_Rel*)(file_buf + current_offset);
 			num_relocs = section_table [loop].sh_size / section_table [loop].sh_entsize;
+			if ((char*)relocation_table < file_buf || (unsigned long long)relocation_table > (unsigned long long)file_buf + file_size)
+			{
+				num_relocs = 0;
+				relocation_table = NULL;
+				printf ("ERROR: Malformed PLT.\n");
+			}
 		}
 		if (!strcmp (current_name, ".dynstr")) //Strings for the dynamic symbols
+		{
 			dynamic_string_table = file_buf + current_offset;
+			if (dynamic_string_table < file_buf || (unsigned long long)dynamic_string_table > (unsigned long long)file_buf + file_size)
+			{
+				dynamic_string_table = NULL;
+				printf ("ERROR: Malformed dynamic string section.\n");
+			}
+		}
 		if (!strcmp (current_name, ".strtab")) //Strings for the regular symbols
+		{
 			string_table = file_buf + current_offset;
+			if (string_table < file_buf || (unsigned long long)string_table > (unsigned long long)file_buf + file_size)
+			{
+				string_table = NULL;
+				printf ("ERROR: Malformed string table.\n");
+			}
+		}
+				
 	}
 }
 
@@ -133,6 +174,9 @@ Elf32_Sym* find_sym (Elf32_Sym* sym_tab, unsigned int addr)
 
 Elf32_Sym* find_reloc_sym (unsigned int addr)
 {
+	if (!relocation_table || !dynamic_symbol_table)
+		return NULL;
+
 	int loop = 0;
 
 	while (relocation_table [loop].r_offset != addr && loop < num_relocs)

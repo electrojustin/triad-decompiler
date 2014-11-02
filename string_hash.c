@@ -50,7 +50,7 @@ void add_string_entry (unsigned int offset, char* string)
 
 char* get_entry (unsigned int offset)
 {
-	if (offset * sizeof (char*) > string_table_size)
+	if (offset * sizeof (char*) > string_table_size || !string_hash_table)
 		return NULL;
 	else
 		return string_hash_table [offset];
