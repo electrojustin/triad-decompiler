@@ -26,7 +26,6 @@
 #include <libdis.h>
 
 #include "elf_parser.h"
-#include "string_hash.h"
 
 #pragma once
 

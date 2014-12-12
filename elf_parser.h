@@ -25,8 +25,6 @@
 #include <stdio.h>
 #include <elf.h>
 
-#include "string_hash.h"
-
 #pragma once
 
 char* file_buf; //Buffer into which the file is read. Must be free'd

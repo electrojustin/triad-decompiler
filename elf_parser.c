@@ -246,8 +246,6 @@ void parse_elf (char* file_name)
 
 void elf_parser_cleanup (void)
 {
-	if (string_hash_table)
-		free (string_hash_table);
 	if (file_buf)
 		free (file_buf);
 }
