@@ -107,43 +107,6 @@ void resolve_jumps (jump_block* to_resolve, function* benefactor)
 	}
 }
 
-void splice_jump_blocks (jump_block* to_splice, struct splice_params arg)
-{
-	int i = 0;
-	//Copy target data into destination jump block until instruction index hits an unconditional jump
-	while (!(to_splice->instructions [i].mnemonic [0] == 'j' && to_splice->instructions [i].mnemonic [1] == 'm' && to_splice->instructions [i].mnemonic [2] == 'p'))
-	{
-		arg.to_form->instructions [*arg.instruction_index] = to_splice->instructions [i];
-		if (to_splice->instructions [i].mnemonic [0] == 'r' && to_splice->instructions [i].mnemonic [1] == 'e' && to_splice->instructions [i].mnemonic [2] == 't')
-			break;
-		i ++;
-		*arg.instruction_index += 1;
-	}
-
-	//Include jump instruction if it's part of in function control flow, like a loop
-	if (to_splice->flags & IS_LOOP)
-	{
-		arg.to_form->instructions [*arg.instruction_index] = to_splice->instructions [i];
-		*arg.instruction_index += 1;
-	}
-	else if (to_splice->instructions [i].mnemonic [0] == 'j')
-		free (to_splice->instructions [i].operands); //Cleanup operands since this instruction will be completely forgotten
-
-	//Copy conditional jump data into target jump block
-	for (i = 0; i < to_splice->num_conditional_jumps; i++)
-	{
-		arg.to_form->conditional_jumps [*arg.cond_jump_index] = to_splice->conditional_jumps [i];
-		*arg.cond_jump_index += 1;
-	}
-
-	//Copy call data into target jump block
-	for (i = 0; i < to_splice->num_calls; i++)
-	{
-		arg.to_form->calls [*arg.calls_index] = to_splice->calls [i];
-		*arg.calls_index += 1;
-	}
-}
-
 //Cleanup dynamically allocated memory of a function
 void cleanup_function (function* to_cleanup, char scrub_insn)
 {

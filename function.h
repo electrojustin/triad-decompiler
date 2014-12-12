@@ -53,7 +53,6 @@ struct splice_params //Throwaway parameter structure for splicing together vario
 };
 
 function* init_function (function* to_init, unsigned int start_addr);
-void splice_jump_blocks (jump_block* to_splice, struct splice_params arg);
 void split_jump_blocks (jump_block* to_split, unsigned int addr);
 void resolve_calls_help (jump_block* benefactor, function* parent);
 void resolve_calls (function* benefactor);
