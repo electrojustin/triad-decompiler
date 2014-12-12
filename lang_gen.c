@@ -35,7 +35,8 @@ char test_conditions [14] [3] = {"<\0\0", ">=\0", "!=\0", "==\0", "<=\0", ">\0\0
 void translate_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_block* parent)
 {
 	char* line = malloc (128);
-	char* name = NULL;
+	Elf32_Sym* name_sym = NULL;
+	char* name_string = NULL;
 	int len;
 	int line_length = 128;
 	var* temp = NULL;
@@ -139,18 +140,26 @@ void translate_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_b
 			case insn_call:
 				target_addr = relative_insn (&instruction, index_to_addr (instruction.addr) + instruction.size);
 				if ((unsigned char)file_buf [addr_to_index (target_addr)] == 0xFF && dynamic_string_table)
-					name = &(dynamic_string_table [find_reloc_sym (*(int*)&(file_buf [addr_to_index (target_addr)+2]))->st_name]);
-				else if (string_hash_table)
-					name = string_hash_table [target_addr-0x8048000];
-				if (name)
 				{
-					len = strlen (name);
+					name_sym = find_reloc_sym (*(int*)&(file_buf [addr_to_index (target_addr)+2]));
+					if (name_sym)
+						name_string = dynamic_string_table + name_sym->st_name;
+				}
+				else
+				{
+					name_sym = find_sym (symbol_table, symbol_table_end, target_addr);
+					if (name_sym)
+						name_string = string_table + name_sym->st_name;
+				}
+				if (name_string)
+				{
+					len = strlen (name_string);
 					if (len + 12 + num_caller_params*22 > line_length)
 					{
 						line_length = len + 12 + num_caller_params*22;
 						line = realloc (line, line_length);
 					}
-					sprintf (line, "eax = %s (", name);
+					sprintf (line, "eax = %s (", name_string);
 				}
 				else
 					sprintf (line, "eax = func_%p (", target_addr);
@@ -681,7 +690,7 @@ void translate_func (function* to_translate)
 {
 	var* current_var;
 	var* current_global = global_list;
-	char* name = NULL;
+	Elf32_Sym* func_name = NULL;
 	num_tabs = 1;
 
 	while (current_global && current_global->next != global_list)
@@ -710,10 +719,9 @@ void translate_func (function* to_translate)
 	//Print function header
 	//NOTE: EAX will always be returned, what EAX means is up to the caller.
 	//Since EAX is returned, a 32 bit int will always be returned
-	if (string_hash_table)
-		name = string_hash_table [to_translate->start_addr - 0x8048000];
-	if (name)
-		printf ("int %s (", name);
+	func_name = find_sym (symbol_table, symbol_table_end, to_translate->start_addr);
+	if (func_name)
+		printf ("int %s (", string_table + func_name->st_name);
 	else
 		printf ("int func_%p (", to_translate->start_addr);
 	current_var = callee_param;

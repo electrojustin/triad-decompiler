@@ -156,14 +156,14 @@ void parse_sections (void)
 	}
 }
 
-Elf32_Sym* find_sym (Elf32_Sym* sym_tab, unsigned int addr)
+Elf32_Sym* find_sym (Elf32_Sym* sym_tab, Elf32_Sym* end, unsigned int addr)
 {
 	if (!sym_tab)
 		return NULL;
 
 	int loop = 0;
 
-	while (sym_tab [loop].st_value != addr && sym_tab [loop].st_info != STT_NOTYPE)
+	while (sym_tab [loop].st_value != addr && &(sym_tab [loop]) < end)
 		loop ++;
 	
 	if (sym_tab [loop].st_info == STT_NOTYPE)
@@ -188,8 +188,7 @@ Elf32_Sym* find_reloc_sym (unsigned int addr)
 		return &(dynamic_symbol_table [relocation_table [loop].r_info >> 8]);
 }
 
-//Load symbols into an associative array for quick lookup
-void load_string_hashes (void)
+void find_main (void)
 {
 	if (!symbol_table || !string_table)
 		return;
@@ -201,9 +200,11 @@ void load_string_hashes (void)
 	{
 		if (symbol_table [loop].st_name && symbol_table [loop].st_value)
 		{
-			add_string_entry (symbol_table [loop].st_value - 0x8048000, string_table + symbol_table [loop].st_name);
 			if (!strcmp (string_table + symbol_table [loop].st_name, "main"))
+			{
 				main_addr = symbol_table [loop].st_value;
+				return;
+			}
 		}
 		loop ++;
 	}
@@ -240,7 +241,7 @@ void parse_elf (char* file_name)
 	get_section_names ();
 	parse_sections ();
 	get_entry_point ();
-	load_string_hashes ();
+	find_main ();
 }
 
 void elf_parser_cleanup (void)

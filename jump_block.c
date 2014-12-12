@@ -104,7 +104,7 @@ jump_block* init_jump_block (jump_block* to_init, unsigned int start_addr)
 		//Keep track of how many times we've seen the instruction "push %ebp". One too many and we've started on the adjacent function.
 		if (instruction.type == insn_push && !strcmp (instruction.operands->op.data.reg.name, "ebp"))
 			num_push_ebp ++;
-		if (instruction.addr > file_size || (string_hash_table && get_entry (current-0x8048000))) //If we're outside the text section, we should be done. If this next line has a symbol associated with it, it's probably the beginning of the next function.
+		if (instruction.addr > file_size) //If we're outside the text section, we should be done.
 			num_push_ebp = 2;
 	//Stop disassembly of jump block at next unconditional jump or call
 	} while (instruction.mnemonic [0] != 'j' && num_push_ebp != 2); //Jump block ends on jump or return
