@@ -129,6 +129,27 @@ jump_block* init_jump_block (jump_block* to_init, unsigned int start_addr)
 	return to_init; //Convenient to return the to_init param so we can chain function calls like "example (init_jump_block (malloc (sizeof (jump_block)), some_addr, block))"
 }
 
+//Function parsing needs all of the instructions, and translating into C needs all of the instructions, but storing all of the instructions between those two points in time
+//takes up an enourmous amount of memory. So we need a seperate function from the init function to disassemble all of the instructions in a jump block a second time.
+void parse_instructions (jump_block* to_parse)
+{
+	int i;
+	x86_insn_t instruction;
+	unsigned int current = to_parse->start;
+	int size;
+
+	//Allocate memory for the instructions
+	to_parse->instructions = (x86_insn_t*)malloc (to_parse->num_instructions * sizeof (x86_insn_t));
+
+	//Start disassembling
+	for (i = 0; i < to_parse->num_instructions; i++)
+	{
+		size = x86_disasm (file_buf, file_size, 0, addr_to_index (current), &instruction);
+		to_parse->instructions [i] = instruction;
+		current += size;
+	}
+}
+
 void cleanup_jump_block (jump_block* to_cleanup, char scrub_insn)
 {
 	if (to_cleanup->num_conditional_jumps)
@@ -136,6 +157,11 @@ void cleanup_jump_block (jump_block* to_cleanup, char scrub_insn)
 	if (to_cleanup->num_calls)
 		free (to_cleanup->calls);
 
+	cleanup_instruction_list (to_cleanup, scrub_insn);
+}
+
+void cleanup_instruction_list (jump_block* to_cleanup, char scrub_insn)
+{	
 	//Additional cleanup needed for instructions because operands are a dynamically allocated linked list
 	if (scrub_insn)
 	{

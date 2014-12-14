@@ -84,6 +84,10 @@ function* init_function (function* to_init, unsigned int start_addr)
 	}
 
 	to_init->jump_block_list = root;
+
+	//Free some memory for the time being
+	list_loop (cleanup_instruction_list, root, root, 1);
+	
 	return to_init;
 }
 
