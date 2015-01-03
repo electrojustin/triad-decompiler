@@ -664,6 +664,9 @@ void jump_block_preprocessing (jump_block* to_process, function* parent)
 
 void translate_func (function* to_translate)
 {
+	//Disassemble the jump blocks again
+	list_loop (parse_instructions, to_translate->jump_block_list, to_translate->jump_block_list);
+
 	var* current_var;
 	var* current_global = global_list;
 	Elf32_Sym* func_name = NULL;

@@ -53,3 +53,5 @@ void print_jump_block (jump_block* to_print);
 void print_jump_block_list (jump_block* to_print);
 x86_insn_t* get_insn_by_addr (jump_block* parent, unsigned int addr);
 unsigned int relative_insn (x86_insn_t* insn, unsigned int address);
+void cleanup_instruction_list (jump_block* to_cleanup, char scrub_insn);
+void parse_instructions (jump_block* to_parse);
