@@ -8,7 +8,15 @@
 
 char test_conditions [14] [3] = {"<\0\0", ">=\0", "!=\0", "==\0", "<=\0", ">\0\0", "<\0\0", ">\0\0", "\0\0\0", "\0\0\0", "<\0\0", ">=\0", "<=\0", ">\0\0"};
 
-void translate_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_block* parent)
+void disassemble_insn (x86_insn_t instruction)
+{
+	char line [128];
+
+	x86_format_insn (&instruction, line, 128, att_syntax);
+	printf ("\t%s\n", line);
+}
+
+void decompile_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_block* parent)
 {
 	char* line = malloc (128);
 	Elf32_Sym* name_sym = NULL;
@@ -161,42 +169,53 @@ void translate_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_b
 				break;
 			case insn_test: //the test instruction is normally found in the context test %eax,%eax. This compares EAX to 0.
 				//Instruction after a compare or a test is usually a conditional jump
-				target_addr = relative_insn (&next_instruction, index_to_addr (next_instruction.addr) + next_instruction.size); 
-				temp = add_var (instruction.operands->op);
-				if (parent->flags & IS_WHILE)
-					sprintf (next_line, "while (%s %s 0)\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72]);
-				else if (target_addr > index_to_addr (next_instruction.addr))
-					sprintf (next_line, "if (%s %s 0)\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72]); //The conditional jumps start with "jump if below," which has an opcode of 0x72
-				else
+				if (language_flag == 'f') //Instead of rewriting most of this function for partial disassembly, we're simply going to abuse fall through
 				{
-					sprintf (next_line, "} while (%s %s 0);\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72]);
-					num_tabs -= 2;
+					target_addr = relative_insn (&next_instruction, index_to_addr (next_instruction.addr) + next_instruction.size); 
+					temp = add_var (instruction.operands->op);
+					if (parent->flags & IS_WHILE)
+						sprintf (next_line, "while (%s %s 0)\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72]);
+					else if (target_addr > index_to_addr (next_instruction.addr))
+						sprintf (next_line, "if (%s %s 0)\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72]); //The conditional jumps start with "jump if below," which has an opcode of 0x72
+					else
+					{
+						sprintf (next_line, "} while (%s %s 0);\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72]);
+						num_tabs -= 2;
+					}
+					num_tabs ++;
+					break;
 				}
-				num_tabs ++;
-				break;
 			case insn_cmp: //the compare instructions just "compares" its two operands
-				temp = add_var (instruction.operands->op);
-				temp2 = add_var (instruction.operands->next->op);
-				target_addr = relative_insn (&next_instruction, index_to_addr (next_instruction.addr) + next_instruction.size);
-				if (parent->flags & IS_WHILE)
-					sprintf (next_line, "while (%s %s %s)\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72], temp2->name);
-				else if (target_addr > index_to_addr (next_instruction.addr))
-					sprintf (next_line, "if (%s %s %s)\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72], temp2->name);
-				else
+				if (language_flag == 'f')
 				{
-					sprintf (next_line, "} while (%s %s %s);\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72], temp2->name);
-					num_tabs -= 2;
+					temp = add_var (instruction.operands->op);
+					temp2 = add_var (instruction.operands->next->op);
+					target_addr = relative_insn (&next_instruction, index_to_addr (next_instruction.addr) + next_instruction.size);
+					if (parent->flags & IS_WHILE)
+						sprintf (next_line, "while (%s %s %s)\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72], temp2->name);
+					else if (target_addr > index_to_addr (next_instruction.addr))
+						sprintf (next_line, "if (%s %s %s)\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72], temp2->name);
+					else
+					{
+						sprintf (next_line, "} while (%s %s %s);\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72], temp2->name);
+						num_tabs -= 2;
+					}
+					num_tabs ++;
+					break;
 				}
-				num_tabs ++;
-				break;
 			case insn_jcc:
-				sprintf (line, next_line);
-				bzero (next_line, 128);
-				break;
+				if (language_flag == 'f')
+				{
+					sprintf (line, next_line);
+					bzero (next_line, 128);
+					break;
+				}
 			case insn_jmp:
-				break;
+				if (language_flag == 'f')
+					break;
 			case insn_nop:
-				break;
+				if (language_flag == 'f')
+					break;
 			default:
 				x86_format_insn (&instruction, line, 128, att_syntax);
 				line [strlen (line)] = '\n';
@@ -210,32 +229,38 @@ void translate_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_b
 		translation_size = 2*(translation_size + strlen (line) + num_tabs);
 		translation = realloc (translation, translation_size);
 	}
-	if (line [0] && (instruction.type != insn_jcc || line [0] == '}'))
+	if (language_flag == 'f')
 	{
-		for (i = 0; i < num_tabs; i ++)
+		if (line [0] && (instruction.type != insn_jcc || line [0] == '}'))
 		{
-			sprintf (&(translation [actual_translation_size]), "\t");
-			actual_translation_size ++;
+			for (i = 0; i < num_tabs; i ++)
+			{
+				sprintf (&(translation [actual_translation_size]), "\t");
+				actual_translation_size ++;
+			}
 		}
-	}
-	else if (instruction.type == insn_jcc && line [0] != '}')
-	{
-		for (i = 0; i < num_tabs-1; i ++)
+		else if (instruction.type == insn_jcc && line [0] != '}')
 		{
-			sprintf (&(translation [actual_translation_size]), "\t");
-			actual_translation_size ++;
+			for (i = 0; i < num_tabs-1; i ++)
+			{
+				sprintf (&(translation [actual_translation_size]), "\t");
+				actual_translation_size ++;
+			}
 		}
 	}
 	strcpy (&(translation [actual_translation_size]), line);
-	if (instruction.type == insn_jcc && line [0] != '}')
+	if (language_flag == 'f')
 	{
-		actual_translation_size = strlen (translation);
-		for (i = 0; i < num_tabs - 1; i ++)
+		if (instruction.type == insn_jcc && line [0] != '}')
 		{
-			sprintf (&(translation [actual_translation_size]), "\t");
-			actual_translation_size ++;
+			actual_translation_size = strlen (translation);
+			for (i = 0; i < num_tabs - 1; i ++)
+			{
+				sprintf (&(translation [actual_translation_size]), "\t");
+				actual_translation_size ++;
+			}
+			sprintf (&(translation [actual_translation_size]), "{\n");
 		}
-		sprintf (&(translation [actual_translation_size]), "{\n");
 	}
 		
 	actual_translation_size += strlen (line);
@@ -244,10 +269,19 @@ void translate_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_b
 	free (line);
 }
 
+void disassemble_jump_block (jump_block* to_translate)
+{
+	int i;
+
+	//Translate every instruction contained in jump block
+	for (i = 0; i < to_translate->num_instructions; i ++)
+		disassemble_insn (to_translate->instructions [i]);
+}
+
 //Final translation of each jump block, among other things.
 //Also contains some routines that need to be performed per jump block.
 //These routines are second iteration routines (see jump_block_preprocessing header)
-void translate_jump_block (jump_block* to_translate, function* parent)
+void decompile_jump_block (jump_block* to_translate, function* parent)
 {
 	int i;
 	int j;
@@ -293,7 +327,7 @@ void translate_jump_block (jump_block* to_translate, function* parent)
 			if (target2 && target2 == parent->dup_targets [i])
 			{
 				//Any jump that comes after the associated if statement, before the else statement, and isn't an unconditional jump immediately before the else 
-				//block should be redirected to the start of the else block in order to get the rest of translate_jump_blocks to place the "}" correctly
+				//block should be redirected to the start of the else block in order to get the rest of decompile_jump_blocks to place the "}" correctly
 				if (orig >= parent->pivots [i] && orig < parent->else_starts [i] && parent->pivots [i] && to_translate->end != parent->else_starts [i])
 				{
 					if (to_translate->next->end != parent->dup_targets [i])
@@ -426,7 +460,7 @@ void translate_jump_block (jump_block* to_translate, function* parent)
 
 	//Translate every instruction contained in jump block
 	for (i = 0; i < to_translate->num_instructions; i ++)
-		translate_insn (to_translate->instructions [i], to_translate->instructions [i+1], to_translate);
+		decompile_insn (to_translate->instructions [i], to_translate->instructions [i+1], to_translate);
 
 	if (to_translate->flags & IS_BREAK)
 	{
@@ -595,7 +629,7 @@ void jump_block_preprocessing (jump_block* to_process, function* parent)
 		{
 			to_process->next->flags |= IS_ELSE; //End of IF statement, and ELSE statement exists, so the next block should be the start of a ELSE statement
 
-			//Keep track of else statements that come directly before addresses pointed to by multiple jump instructions (see "}" placement algorithm in translate_jump_block)
+			//Keep track of else statements that come directly before addresses pointed to by multiple jump instructions (see "}" placement algorithm in decompile_jump_block)
 			for (i = 0; i < parent->num_dups; i++)
 			{
 				if (target == parent->dup_targets [i])
@@ -664,70 +698,89 @@ void jump_block_preprocessing (jump_block* to_process, function* parent)
 
 void translate_func (function* to_translate)
 {
+	Elf32_Sym* func_name = NULL;
+
 	//Disassemble the jump blocks again
 	list_loop (parse_instructions, to_translate->jump_block_list, to_translate->jump_block_list);
-
-	var* current_var;
-	var* current_global = global_list;
-	Elf32_Sym* func_name = NULL;
-	num_tabs = 1;
-
-	while (current_global && current_global->next != global_list)
-		current_global = current_global->next;
-
-	//Reset variable finding state machine
-	var_list = NULL;
-	callee_param = NULL;
-	caller_param = NULL;
-	translation_size = 256;
-	translation = malloc (translation_size);
-	bzero (translation, translation_size);
-
-	bzero (next_line, 128);
-
-	//Translate all jump blocks in function
-	list_loop (jump_block_preprocessing, to_translate->jump_block_list, to_translate->jump_block_list, to_translate);
-	list_loop (translate_jump_block, to_translate->jump_block_list, to_translate->jump_block_list, to_translate);
-
-	if (current_global)
-		list_loop (print_declarations, current_global, global_list, 0);
-	else if (global_list)
-		list_loop (print_declarations, global_list, global_list, 0);
-	printf ("\n");
-
-	//Print function header
-	//NOTE: EAX will always be returned, what EAX means is up to the caller.
-	//Since EAX is returned, a 32 bit int will always be returned
-	func_name = find_sym (symbol_table, symbol_table_end, to_translate->start_addr);
-	if (func_name)
-		printf ("int %s (", string_table + func_name->st_name);
-	else
-		printf ("int func_%p (", to_translate->start_addr);
-	current_var = callee_param;
-	if (!callee_param)
-		printf ("void)\n{\n");
+	
+	if (language_flag == 'd')
+	{
+		func_name = find_sym (symbol_table, symbol_table_end, to_translate->start_addr);
+		if (func_name)
+			printf ("int %s\n{\n", string_table + func_name->st_name);
+		else
+			printf ("int func_%p\n{\n", to_translate->start_addr);
+		list_loop (disassemble_jump_block, to_translate->jump_block_list, to_translate->jump_block_list);
+		printf ("}\n");
+	}
 	else
 	{
-		//Print parameter list
-		printf ("%s %s", current_var->c_type, current_var->name);
-		current_var = current_var->next;
-		while (current_var != callee_param && current_var)
+		var* current_var;
+		var* current_global = global_list;
+		num_tabs = 1;
+
+		while (current_global && current_global->next != global_list)
+			current_global = current_global->next;
+
+		//Reset variable finding state machine
+		var_list = NULL;
+		callee_param = NULL;
+		caller_param = NULL;
+		translation_size = 256;
+		translation = malloc (translation_size);
+		bzero (translation, translation_size);
+
+		bzero (next_line, 128);
+
+		//Translate all jump blocks in function
+		list_loop (jump_block_preprocessing, to_translate->jump_block_list, to_translate->jump_block_list, to_translate);
+		list_loop (decompile_jump_block, to_translate->jump_block_list, to_translate->jump_block_list, to_translate);
+
+		if (current_global)
+			list_loop (print_declarations, current_global, global_list, 0);
+		else if (global_list)
+			list_loop (print_declarations, global_list, global_list, 0);
+		printf ("\n");
+
+		//Print function header
+		//NOTE: EAX will always be returned, what EAX means is up to the caller.
+		//Since EAX is returned, a 32 bit int will always be returned
+		func_name = find_sym (symbol_table, symbol_table_end, to_translate->start_addr);
+		if (func_name)
+			printf ("int %s (", string_table + func_name->st_name);
+		else
+			printf ("int func_%p (", to_translate->start_addr);
+		current_var = callee_param;
+		if (!callee_param)
+			printf ("void)\n{\n");
+		else
 		{
-			printf (", ");
+			//Print parameter list
 			printf ("%s %s", current_var->c_type, current_var->name);
 			current_var = current_var->next;
-		}
-		printf (")\n{\n");
+			while (current_var != callee_param && current_var)
+			{
+				printf (", ");
+				printf ("%s %s", current_var->c_type, current_var->name);
+				current_var = current_var->next;
+			}
+			printf (")\n{\n");
 		
+		}
+
+		//Print all variable declarations
+		if (var_list)
+		{
+			if (language_flag == 'f')
+				list_loop (print_declarations, var_list, var_list, 1);
+			else
+				list_loop (print_declarations, var_list, var_list, 0);
+		}
+		printf ("\n");
+
+		//Print the string translation of the given instructions
+		printf ("%s}\n\n", translation);
 	}
-
-	//Print all variable declarations
-	if (var_list)
-		list_loop (print_declarations, var_list, var_list, 1);
-	printf ("\n");
-
-	//Print the string translation of the given instructions
-	printf ("%s}\n\n", translation);
 
 	//Cleanup
 	if (var_list)

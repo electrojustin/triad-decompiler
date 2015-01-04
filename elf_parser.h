@@ -32,3 +32,4 @@ Elf32_Sym* find_sym (Elf32_Sym* sym_tab, Elf32_Sym* end, unsigned int addr);
 Elf32_Sym* find_reloc_sym (unsigned int addr);
 int addr_to_index (unsigned int addr);
 unsigned int index_to_addr (int index);
+void init_elf_parser (void);

@@ -184,7 +184,7 @@ void find_main (void)
 		}
 		loop ++;
 	}
-}
+} 
 
 //Handy function for changing a virtual memory address to index for file_buf
 int addr_to_index (unsigned int addr)
@@ -198,9 +198,23 @@ unsigned int index_to_addr (int index)
 	return index-text_offset+text_addr;
 }
 
+//Initialize some globals that have to deal with the ELF we're reading
+//Note: this must be called whether or not you're actually using the parser
+void init_elf_parser (void)
+{
+	symbol_table = NULL;
+	symbol_table_end = NULL;
+	num_relocs = 0;
+	relocation_table = NULL;
+	dynamic_string_table = NULL;
+	string_table = NULL;
+}
+
 void parse_elf (char* file_name)
 {
 	Elf32_Ehdr* header;
+
+	init_elf_parser ();
 
 	init_file_buf (file_name);
 
