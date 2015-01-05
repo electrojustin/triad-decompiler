@@ -9,6 +9,7 @@ unsigned int text_offset; //Number of bytes from file beginning where .text star
 unsigned int end_of_text;
 unsigned int text_addr; //Virtual memory address .text is loaded into
 unsigned int entry_point; //Entry point of executable. NOTE: probably don't want to start disassembling here
+unsigned int base_addr;
 int num_sections;
 int num_relocs;
 Elf32_Sym* symbol_table;
@@ -32,4 +33,4 @@ Elf32_Sym* find_sym (Elf32_Sym* sym_tab, Elf32_Sym* end, unsigned int addr);
 Elf32_Sym* find_reloc_sym (unsigned int addr);
 int addr_to_index (unsigned int addr);
 unsigned int index_to_addr (int index);
-void init_elf_parser (void);
+void init_elf_parser (char* file_name);

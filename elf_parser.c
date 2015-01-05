@@ -189,19 +189,39 @@ void find_main (void)
 //Handy function for changing a virtual memory address to index for file_buf
 int addr_to_index (unsigned int addr)
 {
-	return addr-text_addr+text_offset;
+	return addr-base_addr;
 }
 
 //Handy function for changing an index for file_buf to a virtual memory address
 unsigned int index_to_addr (int index)
 {
-	return index-text_offset+text_addr;
+	return index+base_addr;
 }
 
 //Initialize some globals that have to deal with the ELF we're reading
 //Note: this must be called whether or not you're actually using the parser
-void init_elf_parser (void)
+void init_elf_parser (char* file_name)
 {
+	init_file_buf (file_name);
+
+	Elf32_Ehdr* header = (Elf32_Ehdr*)file_buf;
+	Elf32_Phdr* program_headers = (Elf32_Phdr*)(file_buf + header->e_phoff);
+	int i;
+
+	for (i = 0; i < header->e_phnum; i ++)
+	{
+		if (program_headers [i].p_type == PT_LOAD)
+		{
+			base_addr = program_headers [i].p_vaddr;
+			break;
+		}
+	}
+	if (i == header->e_phnum)
+	{
+		printf ("CRITICAL ERROR: No loadable segments\n");
+		exit (-1);
+	}
+
 	symbol_table = NULL;
 	symbol_table_end = NULL;
 	num_relocs = 0;
@@ -214,9 +234,7 @@ void parse_elf (char* file_name)
 {
 	Elf32_Ehdr* header;
 
-	init_elf_parser ();
-
-	init_file_buf (file_name);
+	init_elf_parser (file_name);
 
 	//Sanity check
 	header = (Elf32_Ehdr*)file_buf;

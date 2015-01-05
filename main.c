@@ -56,8 +56,7 @@ int main (int argc, char** argv)
 	x86_init (opt_none, NULL, NULL);
 	if (beginning_address_string)
 	{
-		init_elf_parser ();
-		init_file_buf (file_name);
+		init_elf_parser (file_name);
 		beginning_address = strtoul (beginning_address_string, NULL, 16);
 		if (beginning_address)
 			func = init_function (malloc (sizeof (function)), beginning_address);
