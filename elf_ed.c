@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include "elf_ed.h"
 
 void fix_header (unsigned int insertion_addr, int size)

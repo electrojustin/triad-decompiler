@@ -169,10 +169,10 @@ void decompile_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_b
 				break;
 			case insn_test: //the test instruction is normally found in the context test %eax,%eax. This compares EAX to 0.
 				//Instruction after a compare or a test is usually a conditional jump
-				if (language_flag == 'f') //Instead of rewriting most of this function for partial disassembly, we're simply going to abuse fall through
+				target_addr = relative_insn (&next_instruction, index_to_addr (next_instruction.addr) + next_instruction.size); 
+				temp = add_var (instruction.operands->op);
+				if (language_flag == 'f')
 				{
-					target_addr = relative_insn (&next_instruction, index_to_addr (next_instruction.addr) + next_instruction.size); 
-					temp = add_var (instruction.operands->op);
 					if (parent->flags & IS_WHILE)
 						sprintf (next_line, "while (%s %s 0)\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72]);
 					else if (target_addr > index_to_addr (next_instruction.addr))
@@ -183,13 +183,16 @@ void decompile_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_b
 						num_tabs -= 2;
 					}
 					num_tabs ++;
-					break;
 				}
+				else
+					sprintf (line, "%s %s, %s\n", instruction.mnemonic, temp->name, temp->name);
+
+				break;
 			case insn_cmp: //the compare instructions just "compares" its two operands
+				temp = add_var (instruction.operands->op);
+				temp2 = add_var (instruction.operands->next->op);
 				if (language_flag == 'f')
 				{
-					temp = add_var (instruction.operands->op);
-					temp2 = add_var (instruction.operands->next->op);
 					target_addr = relative_insn (&next_instruction, index_to_addr (next_instruction.addr) + next_instruction.size);
 					if (parent->flags & IS_WHILE)
 						sprintf (next_line, "while (%s %s %s)\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72], temp2->name);
@@ -201,21 +204,33 @@ void decompile_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_b
 						num_tabs -= 2;
 					}
 					num_tabs ++;
-					break;
 				}
+				else
+					sprintf (line, "%s %s, %s\n", instruction.mnemonic, temp->name, temp2->name);
+
+				break;
 			case insn_jcc:
 				if (language_flag == 'f')
 				{
 					sprintf (line, next_line);
 					bzero (next_line, 128);
-					break;
 				}
+				else
+				{
+					target_addr = relative_insn (&instruction, index_to_addr (instruction.addr) + instruction.size);
+					sprintf (line, "%s %p\n", instruction.mnemonic, target_addr);
+				}
+
+				break;
 			case insn_jmp:
-				if (language_flag == 'f')
-					break;
+				if (language_flag != 'f')
+				{
+					target_addr = relative_insn (&instruction, index_to_addr (instruction.addr) + instruction.size);
+					sprintf (line, "%s %p\n", instruction.mnemonic, target_addr);
+				}
+				break;
 			case insn_nop:
-				if (language_flag == 'f')
-					break;
+				break;
 			default:
 				x86_format_insn (&instruction, line, 128, att_syntax);
 				line [strlen (line)] = '\n';
@@ -248,7 +263,7 @@ void decompile_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_b
 			}
 		}
 	}
-	else if ((!temp || (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp"))) && instruction.type != insn_push && instruction.type != insn_pop && instruction.type != insn_leave)
+	else if ((!temp || (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp"))) && instruction.type != insn_push && instruction.type != insn_pop && instruction.type != insn_leave && instruction.type != insn_nop)
 	{
 		sprintf (&(translation [actual_translation_size]), "\t");
 		actual_translation_size ++;
@@ -283,9 +298,31 @@ void disassemble_jump_block (jump_block* to_translate)
 		disassemble_insn (to_translate->instructions [i]);
 }
 
-void partial_decompile_jump_block (jump_block* to_translate)
+void partial_decompile_jump_block (jump_block* to_translate, function* parent)
 {
 	int i;
+	int j;
+	int len;
+
+	for (i = 0; i < parent->num_jump_addrs; i ++)
+	{
+		if (to_translate->next->start == parent->jump_addrs [i])
+		{
+			len = strlen (translation);
+			if (len + 12 > translation_size)
+			{
+				translation_size  = 2*(len + 12);
+				translation = realloc (translation, translation_size);
+			}
+			sprintf (&(translation [len]), "%p:\n", to_translate->next->start);
+
+			for (j = 0; j < parent->num_jump_addrs; j ++)
+			{
+				if (to_translate->next->start == parent->jump_addrs [j])
+					parent->jump_addrs [j] = 0;
+			}
+		}
+	}
 
 	//Translate every instruction contained in jump block
 	for (i = 0; i < to_translate->num_instructions; i ++)
@@ -753,7 +790,7 @@ void translate_func (function* to_translate)
 			list_loop (decompile_jump_block, to_translate->jump_block_list, to_translate->jump_block_list, to_translate);
 		}
 		else
-			list_loop (partial_decompile_jump_block, to_translate->jump_block_list, to_translate->jump_block_list);
+			list_loop (partial_decompile_jump_block, to_translate->jump_block_list, to_translate->jump_block_list, to_translate);
 
 		if (current_global)
 			list_loop (print_declarations, current_global, global_list, 0);

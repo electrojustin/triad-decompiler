@@ -17,6 +17,6 @@ void jump_block_preprocessing (jump_block* to_process, function* parent);
 void decompile_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_block* parent);
 void disassemble_insn (x86_insn_t instruction);
 void disassemble_jump_block (jump_block* to_translate);
-void partial_decompile_jump_block (jump_block* to_translate);
+void partial_decompile_jump_block (jump_block* to_translate, function* parent);
 void print_declarations (var* to_print, char should_tab); //Helper function. We frequently need to print a variable's type followed by its name
 void translate_function_list (function* function_list); //Print all functions in given function list
