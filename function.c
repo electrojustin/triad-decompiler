@@ -54,7 +54,7 @@ function* init_function (function* to_init, unsigned int start_addr)
 		if (!current)
 		{
 			printf ("Error: invalid jump instruction at %p\n", to_init->orig_addrs [i]);
-			exit (1);
+			continue;
 		}
 	
 		split_jump_blocks (current, params.key);
