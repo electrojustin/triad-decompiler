@@ -10,6 +10,7 @@ unsigned int end_of_text;
 unsigned int text_addr; //Virtual memory address .text is loaded into
 unsigned int entry_point; //Entry point of executable. NOTE: probably don't want to start disassembling here
 unsigned int base_addr;
+unsigned int executable_segment_size;
 int num_sections;
 int num_relocs;
 Elf32_Sym* symbol_table;

@@ -123,7 +123,7 @@ void decompile_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_b
 				break;
 			case insn_call:
 				target_addr = relative_insn (&instruction, index_to_addr (instruction.addr) + instruction.size);
-				if ((unsigned char)file_buf [addr_to_index (target_addr)] == 0xFF && dynamic_string_table)
+				if (addr_to_index (target_addr) < executable_segment_size && (unsigned char)file_buf [addr_to_index (target_addr)] == 0xFF && dynamic_string_table)
 				{
 					name_sym = find_reloc_sym (*(int*)&(file_buf [addr_to_index (target_addr)+2]));
 					if (name_sym)
@@ -248,6 +248,11 @@ void decompile_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_b
 			}
 		}
 	}
+	else if ((!temp || (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp"))) && instruction.type != insn_push && instruction.type != insn_pop && instruction.type != insn_leave)
+	{
+		sprintf (&(translation [actual_translation_size]), "\t");
+		actual_translation_size ++;
+	}
 	strcpy (&(translation [actual_translation_size]), line);
 	if (language_flag == 'f')
 	{
@@ -276,6 +281,15 @@ void disassemble_jump_block (jump_block* to_translate)
 	//Translate every instruction contained in jump block
 	for (i = 0; i < to_translate->num_instructions; i ++)
 		disassemble_insn (to_translate->instructions [i]);
+}
+
+void partial_decompile_jump_block (jump_block* to_translate)
+{
+	int i;
+
+	//Translate every instruction contained in jump block
+	for (i = 0; i < to_translate->num_instructions; i ++)
+		decompile_insn (to_translate->instructions [i], to_translate->instructions [i+1], to_translate);
 }
 
 //Final translation of each jump block, among other things.
@@ -733,8 +747,13 @@ void translate_func (function* to_translate)
 		bzero (next_line, 128);
 
 		//Translate all jump blocks in function
-		list_loop (jump_block_preprocessing, to_translate->jump_block_list, to_translate->jump_block_list, to_translate);
-		list_loop (decompile_jump_block, to_translate->jump_block_list, to_translate->jump_block_list, to_translate);
+		if (language_flag == 'f')
+		{
+			list_loop (jump_block_preprocessing, to_translate->jump_block_list, to_translate->jump_block_list, to_translate);
+			list_loop (decompile_jump_block, to_translate->jump_block_list, to_translate->jump_block_list, to_translate);
+		}
+		else
+			list_loop (partial_decompile_jump_block, to_translate->jump_block_list, to_translate->jump_block_list);
 
 		if (current_global)
 			list_loop (print_declarations, current_global, global_list, 0);
@@ -771,10 +790,7 @@ void translate_func (function* to_translate)
 		//Print all variable declarations
 		if (var_list)
 		{
-			if (language_flag == 'f')
-				list_loop (print_declarations, var_list, var_list, 1);
-			else
-				list_loop (print_declarations, var_list, var_list, 0);
+			list_loop (print_declarations, var_list, var_list, 1);
 		}
 		printf ("\n");
 

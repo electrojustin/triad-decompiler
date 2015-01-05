@@ -213,6 +213,7 @@ void init_elf_parser (char* file_name)
 		if (program_headers [i].p_type == PT_LOAD)
 		{
 			base_addr = program_headers [i].p_vaddr;
+			executable_segment_size = program_headers [i].p_filesz;
 			break;
 		}
 	}
