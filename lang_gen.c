@@ -15,7 +15,7 @@ void disassemble_insn (x86_insn_t instruction)
 
 	printf ("%p:", index_to_addr (instruction.addr));
 
-	if (instruction.type == insn_jmp || instruction.type == insn_jcc)
+	if (instruction.type == insn_jmp || instruction.type == insn_jcc || instruction.type == insn_call)
 	{
 		target_addr = relative_insn (&instruction, index_to_addr (instruction.addr) + instruction.size);
 		printf ("\t%s\t%p\n", instruction.mnemonic, target_addr);
@@ -769,11 +769,11 @@ void translate_func (function* to_translate)
 	{
 		func_name = find_sym (symbol_table, symbol_table_end, to_translate->start_addr);
 		if (func_name)
-			printf ("int %s\n{\n", string_table + func_name->st_name);
+			printf ("int func_%p (%s)\n{\n", to_translate->start_addr, string_table + func_name->st_name);
 		else
 			printf ("int func_%p\n{\n", to_translate->start_addr);
 		list_loop (disassemble_jump_block, to_translate->jump_block_list, to_translate->jump_block_list);
-		printf ("}\n");
+		printf ("}\n\n");
 	}
 	else
 	{
