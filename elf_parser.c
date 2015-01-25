@@ -245,6 +245,18 @@ void parse_elf (char* file_name)
 		printf ("CRITICAL ERROR: Not an ELF file.\n");
 		exit (-1);
 	}
+	if (header->e_shoff > file_size)
+	{
+		elf_parser_cleanup ();
+		printf ("ERROR: ELF file is corrupt. Invalid section header offset. Sections have probably been stripped, please specify a starting address.\n");
+		exit (-1);
+	}
+	if (header->e_phoff > file_size)
+	{
+		elf_parser_cleanup ();
+		printf ("CRITICAL ERROR: ELF file is corrupt Invalid program header offset.\n");
+		exit (-1);
+	}
 
 	get_num_sections ();
 	get_section_names ();
