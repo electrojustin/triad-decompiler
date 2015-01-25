@@ -1,7 +1,7 @@
 CFLAGS=-O2
 mrproper: triad clean
 debug: CFLAGS=-g
-debug: triad elf_ed
+debug: triad
 triad: main.o elf_parser.o jump_block.o function.o var.o lang_gen.o
 	gcc $(CFLAGS) main.o elf_parser.o jump_block.o function.o var.o lang_gen.o -o triad -ldisasm
 sys_tests: test arith_test control_flow_test
@@ -11,12 +11,6 @@ arith_test: arith_test.c
 	gcc -g -m32 arith_test.c -o arith_test
 control_flow_test: control_flow_test.c
 	gcc -g -m32 control_flow_test.c -o control_flow_test
-elf_ed: elf_ed_main.o elf_ed.o elf_parser.o jump_block.o
-	gcc $(CFLAGS) elf_ed_main.o elf_ed.o elf_parser.o jump_block.o -o elf_ed -ldisasm
-elf_ed.o: elf_ed.c elf_ed.h elf_parser.h
-	gcc $(CFLAGS) -c elf_ed.c
-elf_ed_main.o: elf_ed_main.c elf_ed.h elf_parser.h
-	gcc $(CFLAGS) -c elf_ed_main.c
 main.o: main.c elf_parser.h function.h
 	gcc $(CFLAGS) -c main.c
 elf_parser.o: elf_parser.h elf_parser.c
