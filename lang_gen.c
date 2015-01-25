@@ -11,9 +11,20 @@ char test_conditions [14] [3] = {"<\0\0", ">=\0", "!=\0", "==\0", "<=\0", ">\0\0
 void disassemble_insn (x86_insn_t instruction)
 {
 	char line [128];
+	unsigned int target_addr;
 
-	x86_format_insn (&instruction, line, 128, att_syntax);
-	printf ("\t%s\n", line);
+	printf ("%p:", index_to_addr (instruction.addr));
+
+	if (instruction.type == insn_jmp || instruction.type == insn_jcc)
+	{
+		target_addr = relative_insn (&instruction, index_to_addr (instruction.addr) + instruction.size);
+		printf ("\t%s\t%p\n", instruction.mnemonic, target_addr);
+	}
+	else
+	{
+		x86_format_insn (&instruction, line, 128, att_syntax);
+		printf ("\t%s\n", line);
+	}
 }
 
 void decompile_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_block* parent)
