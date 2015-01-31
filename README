@@ -1,4 +1,4 @@
-Triad decompiler version 0.1 Alpha Test.
+Triad decompiler version 0.3 Alpha Test.
 
 Not intended to be used for copyright infringement or other illegal activities.
 
@@ -15,7 +15,7 @@ First, it will be necessary to build triad. "make triad" should suffice.
 After its components are built, the triad binary will be placed in the build 
 directory. To copy the binary into /usr/bin, simply use "sudo make install."
 
-Usage: triad <file name> <(optional)start address>
+Usage: triad <flags> <file name> <(optional)start address>
 
 Simply run the triad binary from the command line and specify an ELF to 
 decompile as a parameter. By default, triad will try to find the main function 
@@ -25,6 +25,24 @@ Sometimes ELFs have all symbols stripped, so triad will be unable to find main.
 In such a scenario, the user may simply specify a starting address as the second
 command line parameter. But, an incorrect starting address will likely result in
 incorrect decompilation or no decompilation.
+
+Triad has the ability to follow function calls and automatically decompile
+callees. This is especially helpful when dealing with stripped binaries or other
+binaries in which relevant code isn't clearly distinguishable from data.
+
+Flags:
+
+	-f: Full decompilation. This is the default.
+
+	-p: Partial decompilation. Recovered control flow is always going to be
+	bad, so Triad has an option to only partially decompile code. This
+	means Triad will identify variables and parameters, try to recover
+	calling convention, and translate most instructions back into their C
+	operator equivalents, but Triad will leave jumps and comparisons as is
+	with the philosophy that the user knows best how to follow them.
+
+	-d: Disassemble. Make no attempt to decompile code, simply print out a
+	disassembly in AT&T syntax.
 
 Limitations PLEASE READ BEFORE SUBMITTING A BUG REPORT:
 First, triad is really only meant for decompiling x86 NOT x86_64. This is 
