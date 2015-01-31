@@ -10,6 +10,7 @@ int main (int argc, char** argv)
 	int j;
 	char* file_name = NULL;
 	char* beginning_address_string = NULL;
+	char follow_calls = 1;
 	language_flag = 'f';
 
 	//Parse the command line
@@ -29,6 +30,9 @@ int main (int argc, char** argv)
 						break;
 					case 'd':
 						language_flag = 'd';
+						break;
+					case 's':
+						follow_calls = 0;
 						break;
 					default:
 						printf ("Unrecognized flag \"%c\"\n", argv [i][j]);
@@ -71,7 +75,8 @@ int main (int argc, char** argv)
 		exit (-1);
 	}
 	func->next = NULL;
-	resolve_calls (func);
+	if (follow_calls)
+		resolve_calls (func);
 	translate_function_list (func);
 	function_list_cleanup (func, 1); //Make sure those operands don't leak
 	elf_parser_cleanup ();

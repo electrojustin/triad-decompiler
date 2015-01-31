@@ -44,6 +44,8 @@ Flags:
 	-d: Disassemble. Make no attempt to decompile code, simply print out a
 	disassembly in AT&T syntax.
 
+	-s: Disable call following, just decompile main/whatever code was at the specified address.
+
 Limitations PLEASE READ BEFORE SUBMITTING A BUG REPORT:
 First, triad is really only meant for decompiling x86 NOT x86_64. This is 
 because libdisasm only works with x86. Once again, 64 bit applications will
