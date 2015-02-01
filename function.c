@@ -106,7 +106,7 @@ void function_list_cleanup (function* to_cleanup, char scrub_insn)
 void search_func_start_addrs (function* to_test, struct search_params arg)
 {
 	if (to_test->start_addr == arg.key)
-		*arg.ret = (void**)1;
+		*(char*)(arg.ret) = 1;
 }
 
 //Helper function for resolve calls (callback for list_loop)
@@ -157,8 +157,14 @@ void split_jump_blocks (jump_block* to_split, unsigned int addr)
 	x86_oplist_t* next;
 	unsigned int flags = to_split->flags;
 	x86_insn_t* split_instruction;
-	while (index_to_addr (to_split->instructions [i].addr) != addr)
+	while (index_to_addr (to_split->instructions [i].addr) != addr && i < to_split->num_instructions)
 		i ++;
+
+	if (i >= to_split->num_instructions)
+	{
+		printf ("Error: jump into instruction at %p\n", addr);
+		return;
+	}
 
 	new_block = init_jump_block (malloc (sizeof (jump_block)), index_to_addr (to_split->instructions [i].addr));
 
