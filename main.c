@@ -3,6 +3,7 @@
 
 #include "elf_parser.h"
 #include "lang_gen.h"
+#include "var.h"
 
 int main (int argc, char** argv)
 {
@@ -12,6 +13,9 @@ int main (int argc, char** argv)
 	char* beginning_address_string = NULL;
 	char follow_calls = 1;
 	language_flag = 'f';
+	constant_format [0] = '%';
+	constant_format [1] = 'd';
+	constant_format [2] = '\0';
 
 	//Parse the command line
 	for (i = 1; i < argc; i ++)
@@ -33,6 +37,9 @@ int main (int argc, char** argv)
 						break;
 					case 's':
 						follow_calls = 0;
+						break;
+					case 'h':
+						constant_format [1] = 'p';
 						break;
 					default:
 						printf ("Unrecognized flag \"%c\"\n", argv [i][j]);

@@ -61,7 +61,7 @@ var* init_var (var* to_init, x86_op_t operand)
 		to_init->name = malloc (20); //2^64-1 is 20 digits long
 		bzero (to_init->name, 20);
 		to_init->loc.disp = operand.data.dword;
-		sprintf (to_init->name, "%d", to_init->loc.disp);
+		sprintf (to_init->name, constant_format, to_init->loc.disp);
 		to_init->c_type = NULL;
 	}
 	else if (operand.type == op_register) //Not a variable of any kind, but an x86 register
