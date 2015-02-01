@@ -122,7 +122,7 @@ void resolve_calls_help (jump_block* benefactor, function* parent)
 	{
 		arg.key = benefactor->calls [i];
 		list_loop (search_func_start_addrs, parent, parent, arg);
-		if (!ret) //Redundancy check; don't add the same function multiple times
+		if (!ret && addr_to_index (arg.key) < file_size && !find_reloc_sym (*(int*)&(file_buf [addr_to_index (arg.key)+2])))
 		{
 			if (benefactor->calls [i] < text_addr) //Likely a reference to plt, data isn't in this file so don't bother
 				continue;

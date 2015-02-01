@@ -54,9 +54,6 @@ void parse_sections (void)
 	end_of_text = 0;
 	symbol_table = 0;
 	symbol_table_end = 0;
-	dynamic_symbol_table = 0;
-	relocation_table = 0;
-	dynamic_string_table = 0;
 	string_table = 0;
 
 	section_table_index = ((Elf32_Ehdr*)&(file_buf [0]))->e_shoff;
@@ -93,32 +90,7 @@ void parse_sections (void)
 				printf ("ERROR: Malformed symbol table.\n");
 			}
 		}
-		if (!strcmp (current_name, ".dynsym")) //Contains symbols in external libraries to be used by the program
-		{
-			dynamic_symbol_table = (Elf32_Sym*)(file_buf + current_offset);
-			if ((char*)dynamic_symbol_table < file_buf || (unsigned long long)dynamic_symbol_table > (unsigned long long)file_buf + file_size)
-				printf ("ERROR: Malformed dynamic symbol table.\n");
-		}
-		if (!strcmp (current_name, ".rel.plt")) //Contains relocations, which reference dynamic symbols of functions in external libraries called by the program
-		{
-			relocation_table = (Elf32_Rel*)(file_buf + current_offset);
-			num_relocs = section_table [loop].sh_size / section_table [loop].sh_entsize;
-			if ((char*)relocation_table < file_buf || (unsigned long long)relocation_table > (unsigned long long)file_buf + file_size)
-			{
-				num_relocs = 0;
-				relocation_table = NULL;
-				printf ("ERROR: Malformed PLT.\n");
-			}
-		}
-		if (!strcmp (current_name, ".dynstr")) //Strings for the dynamic symbols
-		{
-			dynamic_string_table = file_buf + current_offset;
-			if (dynamic_string_table < file_buf || (unsigned long long)dynamic_string_table > (unsigned long long)file_buf + file_size)
-			{
-				dynamic_string_table = NULL;
-				printf ("ERROR: Malformed dynamic string section.\n");
-			}
-		}
+
 		if (!strcmp (current_name, ".strtab")) //Strings for the regular symbols
 		{
 			string_table = file_buf + current_offset;
@@ -155,13 +127,58 @@ Elf32_Sym* find_reloc_sym (unsigned int addr)
 
 	int loop = 0;
 
-	while (relocation_table [loop].r_offset != addr && loop < num_relocs)
+	while (relocation_table [loop].r_offset != addr && loop < num_dynamic_symbols)
 		loop ++;
 
-	if (loop >= file_size)
+	if (loop >= num_dynamic_symbols)
 		return NULL;
 	else
 		return &(dynamic_symbol_table [relocation_table [loop].r_info >> 8]);
+}
+
+void get_dyn_syms (void)
+{
+	Elf32_Ehdr* header = (Elf32_Ehdr*)file_buf;
+	Elf32_Phdr* segment_table = (Elf32_Phdr*)(file_buf + header->e_phoff);
+	Elf32_Dyn* dynamic_table;
+	int i = 0;
+	int j = 0;
+
+	dynamic_string_table = NULL;
+	dynamic_symbol_table = NULL;
+	relocation_table = NULL;
+	num_dynamic_symbols = 0;
+
+	for (i; i < header->e_phnum; i ++)
+	{
+		if (segment_table [i].p_type == PT_DYNAMIC)
+			break;
+	}
+
+	if (i >= header->e_phnum)
+	{
+		printf ("Error: No dynamic linking information\n");
+		return;
+	}
+
+	dynamic_table = (Elf32_Dyn*)(file_buf + segment_table [i].p_offset);
+	
+	j = 0;
+	while (&(dynamic_table [j]) < (Elf32_Dyn*)(dynamic_table + segment_table[i].p_filesz))
+	{
+		if (dynamic_string_table && dynamic_symbol_table && num_dynamic_symbols && relocation_table)
+			break;
+		if (dynamic_table [j].d_tag == DT_STRTAB)
+			dynamic_string_table = (char*)(file_buf + addr_to_index (dynamic_table [j].d_un.d_ptr));
+		if (dynamic_table [j].d_tag == DT_SYMTAB)
+			dynamic_symbol_table = (Elf32_Sym*)(file_buf + addr_to_index (dynamic_table [j].d_un.d_ptr));
+		if (dynamic_table [j].d_tag == DT_GNU_HASH)
+			num_dynamic_symbols = *(int*)(file_buf + addr_to_index (dynamic_table [j].d_un.d_ptr) + 4);
+		if (dynamic_table [j].d_tag == DT_JMPREL)
+			relocation_table = (Elf32_Rel*)(file_buf + addr_to_index (dynamic_table [j].d_un.d_ptr));
+	
+		j ++;
+	}
 }
 
 void find_main (void)
@@ -226,9 +243,9 @@ void init_elf_parser (char* file_name)
 	symbol_table = NULL;
 	symbol_table_end = NULL;
 	num_relocs = 0;
-	relocation_table = NULL;
-	dynamic_string_table = NULL;
 	string_table = NULL;
+
+	get_dyn_syms ();
 }
 
 void parse_elf (char* file_name)

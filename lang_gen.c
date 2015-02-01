@@ -134,17 +134,17 @@ void decompile_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_b
 				break;
 			case insn_call:
 				target_addr = relative_insn (&instruction, index_to_addr (instruction.addr) + instruction.size);
-				if (addr_to_index (target_addr) < executable_segment_size && (unsigned char)file_buf [addr_to_index (target_addr)] == 0xFF && dynamic_string_table)
+				if (addr_to_index (target_addr) < file_size)
 				{
 					name_sym = find_reloc_sym (*(int*)&(file_buf [addr_to_index (target_addr)+2]));
 					if (name_sym)
 						name_string = dynamic_string_table + name_sym->st_name;
-				}
-				else
-				{
-					name_sym = find_sym (symbol_table, symbol_table_end, target_addr);
-					if (name_sym)
-						name_string = string_table + name_sym->st_name;
+					else
+					{
+						name_sym = find_sym (symbol_table, symbol_table_end, target_addr);
+						if (name_sym)
+							name_string = string_table + name_sym->st_name;
+					}
 				}
 				if (name_string)
 				{
@@ -315,6 +315,10 @@ void partial_decompile_jump_block (jump_block* to_translate, function* parent)
 	int j;
 	int len;
 
+	//Translate every instruction contained in jump block
+	for (i = 0; i < to_translate->num_instructions; i ++)
+		decompile_insn (to_translate->instructions [i], to_translate->instructions [i+1], to_translate);
+
 	for (i = 0; i < parent->num_jump_addrs; i ++)
 	{
 		if (to_translate->next->start == parent->jump_addrs [i])
@@ -334,10 +338,6 @@ void partial_decompile_jump_block (jump_block* to_translate, function* parent)
 			}
 		}
 	}
-
-	//Translate every instruction contained in jump block
-	for (i = 0; i < to_translate->num_instructions; i ++)
-		decompile_insn (to_translate->instructions [i], to_translate->instructions [i+1], to_translate);
 }
 
 //Final translation of each jump block, among other things.
