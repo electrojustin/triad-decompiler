@@ -44,7 +44,8 @@ Flags:
 	-d: Disassemble. Make no attempt to decompile code, simply print out a
 	disassembly in AT&T syntax.
 
-	-s: Disable call following, just decompile main/whatever code was at the specified address.
+	-s: Disable call following, just decompile main/whatever code was at the
+	specified address.
 
 	-h: Print all constants in hexadecimal format.
 
