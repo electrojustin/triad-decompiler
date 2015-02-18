@@ -31,6 +31,7 @@ void decompile_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_b
 {
 	char* line = malloc (128);
 	Elf32_Sym* name_sym = NULL;
+	Elf64_Sym* name_sym64 = NULL;
 	char* name_string = NULL;
 	int len;
 	int line_length = 128;
@@ -136,14 +137,28 @@ void decompile_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_b
 				target_addr = relative_insn (&instruction, index_to_addr (instruction.addr) + instruction.size);
 				if (addr_to_index (target_addr) < file_size)
 				{
-					name_sym = find_reloc_sym (*(int*)&(file_buf [addr_to_index (target_addr)+2]));
-					if (name_sym)
-						name_string = dynamic_string_table + name_sym->st_name;
+					if (architecture == ELFCLASS32)
+						name_sym = find_reloc_sym (*(int*)&(file_buf [addr_to_index (target_addr)+2]));
+					else
+						name_sym64 = find_reloc_sym64 (*(int*)&(file_buf [addr_to_index (target_addr)+2]));
+					if (name_sym || name_sym64)
+					{
+						if (architecture == ELFCLASS32)
+							name_string = dynamic_string_table + name_sym->st_name;
+						else
+							name_string = dynamic_string_table + name_sym64->st_name;
+					}
 					else
 					{
-						name_sym = find_sym (symbol_table, symbol_table_end, target_addr);
+						if (architecture == ELFCLASS32)
+							name_sym = find_sym (symbol_table.arch1, symbol_table_end.arch1, target_addr);
+						else
+							name_sym64 = find_sym64 (symbol_table.arch2, symbol_table_end.arch2, target_addr);
+
 						if (name_sym)
 							name_string = string_table + name_sym->st_name;
+						else if (name_sym64)
+							name_string = string_table + name_sym64->st_name;
 					}
 				}
 				if (name_string)
@@ -761,15 +776,21 @@ void jump_block_preprocessing (jump_block* to_process, function* parent)
 void translate_func (function* to_translate)
 {
 	Elf32_Sym* func_name = NULL;
+	Elf64_Sym* func_name64 = NULL;
 
 	//Disassemble the jump blocks again
 	list_loop (parse_instructions, to_translate->jump_block_list, to_translate->jump_block_list);
 	
 	if (language_flag == 'd')
 	{
-		func_name = find_sym (symbol_table, symbol_table_end, to_translate->start_addr);
+		if (architecture == ELFCLASS32)
+			func_name = find_sym (symbol_table.arch1, symbol_table_end.arch1, to_translate->start_addr);
+		else
+			func_name64 = find_sym64 (symbol_table.arch2, symbol_table_end.arch2, to_translate->start_addr);
 		if (func_name)
 			printf ("int func_%p (%s)\n{\n", to_translate->start_addr, string_table + func_name->st_name);
+		else if (func_name64)
+			printf ("int func_%p (%s)\n{\n", to_translate->start_addr, string_table + func_name64->st_name);
 		else
 			printf ("int func_%p\n{\n", to_translate->start_addr);
 		list_loop (disassemble_jump_block, to_translate->jump_block_list, to_translate->jump_block_list);
@@ -812,9 +833,14 @@ void translate_func (function* to_translate)
 		//Print function header
 		//NOTE: EAX will always be returned, what EAX means is up to the caller.
 		//Since EAX is returned, a 32 bit int will always be returned
-		func_name = find_sym (symbol_table, symbol_table_end, to_translate->start_addr);
+		if (architecture == ELFCLASS32)
+			func_name = find_sym (symbol_table.arch1, symbol_table_end.arch1, to_translate->start_addr);
+		else
+			func_name64 = find_sym64 (symbol_table.arch2, symbol_table_end.arch2, to_translate->start_addr);
 		if (func_name)
 			printf ("int %s (", string_table + func_name->st_name);
+		else if (func_name64)
+			printf ("int %s (", string_table + func_name64->st_name);
 		else
 			printf ("int func_%p (", to_translate->start_addr);
 		current_var = callee_param;
