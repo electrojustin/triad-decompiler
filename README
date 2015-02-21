@@ -1,4 +1,4 @@
-Triad decompiler version 0.3 Alpha Test.
+Triad decompiler version 0.4 Alpha Test.
 
 Not intended to be used for copyright infringement or other illegal activities.
 
@@ -8,8 +8,8 @@ Triad is a tiny, free and open source, libdisasm based x86 decompiler that will
 take in ELF files as input and spit out pseudo-C.
 
 Installation:
-Triad requires libdisasm to be installed first.
-https://sourceforge.net/projects/bastard/files/libdisasm/
+Triad requires Capstone to be installed first.
+http://www.capstone-engine.org/
 
 First, it will be necessary to build triad. "make triad" should suffice.
 After its components are built, the triad binary will be placed in the build 
@@ -50,10 +50,8 @@ Flags:
 	-h: Print all constants in hexadecimal format.
 
 Limitations PLEASE READ BEFORE SUBMITTING A BUG REPORT:
-First, triad is really only meant for decompiling x86 NOT x86_64. This is 
-because libdisasm only works with x86. Once again, 64 bit applications will
-NOT be decompiled properly, if at all (will most likely just trigger a
-segfault).
+Triad really only works on x86 and x86_64 ELF executables. Other architectures
+may be possible in the future, but there are currently no plans to add them.
 
 The triad decompiler is still very much an alpha. The project is nowhere near
 completion and as such is missing some critical features, contains numerous
