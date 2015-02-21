@@ -1,5 +1,5 @@
 #include <stdlib.h>
-#include <libdis.h>
+#include <capstone/capstone.h>
 
 #include "elf_parser.h"
 #include "lang_gen.h"
@@ -64,10 +64,27 @@ int main (int argc, char** argv)
 	function* func;
 	if (beginning_address_string == NULL)
 		parse_elf (file_name);
-	x86_init (opt_none, NULL, NULL);
+
 	if (beginning_address_string)
 	{
 		init_elf_parser (file_name);
+		if (architecture == ELFCLASS32)
+		{
+			if (cs_open (CS_ARCH_X86, CS_MODE_32, &handle) != CS_ERR_OK)
+			{
+				printf ("CRITICAL ERROR: Could not initialize Capstone\n");
+				exit (-1);
+			}
+		}
+		else
+		{
+			if (cs_open (CS_ARCH_X86, CS_MODE_64, &handle) != CS_ERR_OK)
+			{
+				printf ("CRITICAL ERROR: Could not initialize Capstone\n");
+				exit (-1);
+			}
+		}
+		cs_option (handle, CS_OPT_DETAIL, CS_OPT_ON);
 		beginning_address = strtoul (beginning_address_string, NULL, 16);
 		if (beginning_address)
 			func = init_function (malloc (sizeof (function)), beginning_address);
@@ -75,7 +92,26 @@ int main (int argc, char** argv)
 			printf ("Error: invalid start address\n");
 	}
 	else if (main_addr)
+	{
+		if (architecture == ELFCLASS32)
+		{
+			if (cs_open (CS_ARCH_X86, CS_MODE_32, &handle) != CS_ERR_OK)
+			{
+				printf ("CRITICAL ERROR: Could not initialize Capstone\n");
+				exit (-1);
+			}
+		}
+		else
+		{
+			if (cs_open (CS_ARCH_X86, CS_MODE_64, &handle) != CS_ERR_OK)
+			{
+				printf ("CRITICAL ERROR: Could not initialize Capstone\n");
+				exit (-1);
+			}
+		}
+		cs_option (handle, CS_OPT_DETAIL, CS_OPT_ON);
 		func = init_function (malloc (sizeof (function)), main_addr);
+	}
 	else
 	{
 		printf ("Error: could not find main and no start address specified\n");
@@ -85,7 +121,8 @@ int main (int argc, char** argv)
 	if (follow_calls)
 		resolve_calls (func);
 	translate_function_list (func);
+
 	function_list_cleanup (func, 1); //Make sure those operands don't leak
 	elf_parser_cleanup ();
-	x86_cleanup ();
+	cs_close (&handle);
 }

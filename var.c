@@ -1,9 +1,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <libdis.h>
+#include <capstone/capstone.h>
 
 #include "var.h"
+#include "jump_block.h"
 #include "datastructs.h"
 
 int name_ind = 0;
@@ -52,49 +53,47 @@ char* gen_var_name (void)
 	return name_buf;
 }
 
-var* init_var (var* to_init, x86_op_t operand)
+var* init_var (var* to_init, cs_x86_op operand)
 {
 	to_init->name = NULL;
-	if (operand.type == op_immediate) //constant expression
+	if (operand.type == X86_OP_IMM) //constant expression
 	{
 		to_init->type = CONST;
 		to_init->name = malloc (20); //2^64-1 is 20 digits long
 		bzero (to_init->name, 20);
-		to_init->loc.disp = operand.data.dword;
+		to_init->loc.disp = operand.imm;
 		sprintf (to_init->name, constant_format, to_init->loc.disp);
 		to_init->c_type = NULL;
 	}
-	else if (operand.type == op_register) //Not a variable of any kind, but an x86 register
+	else if (operand.type == X86_OP_REG) //Not a variable of any kind, but an x86 register
 	{
 		to_init->name = malloc (MAX_REGNAME);
-		strcpy (to_init->name, operand.data.reg.name);
+		strcpy (to_init->name, cs_reg_name (handle, operand.reg));
 		to_init->type = REG;
 	}
 	else
 	{
-		if (operand.type == op_offset) //Absolute address, i.e. global variable
+		if (operand.type == X86_OP_MEM && !operand.mem.base && !operand.mem.index) //Absolute address, i.e. global variable
 		{
 			to_init->type = GLOBAL;
-			to_init->loc.addr = operand.data.dword;
+			to_init->loc.addr = operand.mem.disp;
 		}
-		else //Should be op_expression unless we're being fed jump instructions or intermediates
+		else
 		{
-			if (!(operand.data.expression.base.type & reg_fp) && !(operand.data.expression.base.type & reg_sp) && operand.data.expression.base.name [0]) //We're dereferencing a general purpose register
+			if (operand.mem.index || (operand.mem.base && operand.mem.base != X86_REG_EBP && operand.mem.base != X86_REG_RBP)) //We're dereferencing a general purpose register
 			{
 				to_init->name = malloc (MAX_REGNAME);
-				strcpy (to_init->name, operand.data.expression.base.name);
+				if (operand.mem.index)
+					strcpy (to_init->name, cs_reg_name (handle, operand.mem.index));
+				else
+					strcpy (to_init->name, cs_reg_name (handle, operand.mem.base));
 				to_init->type = DEREF;
 			}
-			else if (!operand.data.expression.base.name [0])
-			{
-				to_init->type = GLOBAL;
-				to_init->loc.addr = operand.data.dword;
-			}
-			else if (operand.data.expression.disp < 0)
+			else if (operand.mem.disp < 0)
 				to_init->type = LOCAL;
 			else //Should be a parameter otherwise
 				to_init->type = PARAM;
-			to_init->loc.disp = operand.data.expression.disp;
+			to_init->loc.disp = operand.mem.disp;
 		}
 	}
 
@@ -129,7 +128,7 @@ void search_vars (var* to_check, var* key)
 	}
 }
 
-var* add_var (x86_op_t operand)
+var* add_var (cs_x86_op operand)
 {
 	var* to_add = init_var (malloc (sizeof (var)), operand); //Generate what the variable would be if it were to be added
 
@@ -145,15 +144,48 @@ var* add_var (x86_op_t operand)
 	{
 		if (to_add->type == REG)
 		{
-			to_add->c_type = c_types [2]; //All registers are 1 word long
+			if (architecture == ELFCLASS32)
+				to_add->c_type = c_types [2]; //All registers are 1 word long
+			else
+				to_add->c_type = c_types [3];
 			to_add->loc.addr = 0;
 		}
 		else if (to_add->type == DEREF)
-			to_add->c_type = c_types [operand.datatype-1];
+		{
+			switch (operand.size)
+			{
+				case 1:
+					to_add->c_type = c_types [0];
+					break;
+				case 2:
+					to_add->c_type = c_types [1];
+					break;
+				case 4:
+					to_add->c_type = c_types [2];
+					break;
+				case 8:
+					to_add->c_type = c_types [3];
+					break;
+			}
+		}
 		else if (to_add->type != CONST)
 		{
 			to_add->name = gen_var_name (); //Generate a random variable name for non-constants. Constants' names are just a string representation of the constant.
-			to_add->c_type = c_types [operand.datatype-1]; //op_byte through op_dword happen to be numbers 1-5.
+			switch (operand.size)
+			{
+				case 1:
+					to_add->c_type = c_types [0];
+					break;
+				case 2:
+					to_add->c_type = c_types [1];
+					break;
+				case 4:
+					to_add->c_type = c_types [2];
+					break;
+				case 8:
+					to_add->c_type = c_types [3];
+					break;
+			}
 		}
 
 		if (to_add->type == PARAM)

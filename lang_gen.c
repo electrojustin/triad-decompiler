@@ -1,33 +1,29 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <libdis.h>
+#include <capstone/capstone.h>
 
 #include "lang_gen.h"
 #include "datastructs.h"
 
 char test_conditions [14] [3] = {"<\0\0", ">=\0", "!=\0", "==\0", "<=\0", ">\0\0", "<\0\0", ">\0\0", "\0\0\0", "\0\0\0", "<\0\0", ">=\0", "<=\0", ">\0\0"};
 
-void disassemble_insn (x86_insn_t instruction)
+void disassemble_insn (cs_insn instruction, jump_block* parent)
 {
-	char line [128];
 	unsigned int target_addr;
 
-	printf ("%p:", index_to_addr (instruction.addr));
+	printf ("%p:", instruction.address + parent->start);
 
-	if (instruction.type == insn_jmp || instruction.type == insn_jcc || instruction.type == insn_call)
+	if ((instruction.id >= X86_INS_JAE && instruction.id <= X86_INS_JS) || instruction.id == X86_INS_CALL)
 	{
-		target_addr = relative_insn (&instruction, index_to_addr (instruction.addr) + instruction.size);
+		target_addr = relative_insn (&instruction, instruction.address + instruction.size + parent->start);
 		printf ("\t%s\t%p\n", instruction.mnemonic, target_addr);
 	}
 	else
-	{
-		x86_format_insn (&instruction, line, 128, att_syntax);
-		printf ("\t%s\n", line);
-	}
+		printf ("\t%s\t%s\n", instruction.mnemonic, instruction.op_str);
 }
 
-void decompile_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_block* parent)
+void decompile_insn (cs_insn instruction, cs_insn next_instruction, jump_block* parent)
 {
 	char* line = malloc (128);
 	Elf32_Sym* name_sym = NULL;
@@ -41,21 +37,23 @@ void decompile_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_b
 	int actual_translation_size = strlen (translation);
 	int i;
 	int target_addr;
+	char is_recognized = 1;
 
-	if (instruction.type >> 12 == insn_arithmetic || instruction.type >> 12 == insn_logic || instruction.type >> 12 == insn_move)
+	if (!instruction.detail->x86.op_count || instruction.detail->x86.operands [0].type != X86_OP_REG || (instruction.detail->x86.operands [0].reg != X86_REG_RBP && instruction.detail->x86.operands [0].reg != X86_REG_RSP && instruction.detail->x86.operands [0].reg != X86_REG_EBP && instruction.detail->x86.operands [0].reg != X86_REG_ESP))
 	{
-		temp = add_var (instruction.operands->op);
-		if (instruction.operands->next)
-			temp2 = add_var (instruction.operands->next->op);
-	}
-	if (!temp || (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp")))
-	{
-		switch (instruction.type)
+		switch (instruction.id)
 		{
 			//We cut out anything involving EBP or ESP since these are not general purpose registers and would not be part of original program arithmetic
 			//insn_mov through insn_xor are just basic arithmetic operators
-			case insn_mov:
-				if (strcmp (instruction.mnemonic, "lea"))
+			case X86_INS_MOVD:
+			case X86_INS_MOVQ:
+			case X86_INS_MOVDQ2Q:
+			case X86_INS_MOVQ2DQ:
+			case X86_INS_MOV:
+			case X86_INS_LEA:
+				temp = add_var (instruction.detail->x86.operands [0]);
+				temp2 = add_var (instruction.detail->x86.operands [1]);
+				if (instruction.id != X86_INS_LEA)
 				{
 					if (temp->type != DEREF && temp2->type != DEREF)
 						sprintf (line, "%s = %s;\n", temp->name, temp2->name);
@@ -69,51 +67,103 @@ void decompile_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_b
 				else
 					sprintf (line, "%s = (%s)&%s;\n", temp->name, temp2->c_type, temp2->name);
 				break;
-			case insn_sub:
+			case X86_INS_SUB:
+			case X86_INS_SUBPD:
+			case X86_INS_SUBPS:
+			case X86_INS_SUBSS:
+				temp = add_var (instruction.detail->x86.operands [0]);
+				temp2 = add_var (instruction.detail->x86.operands [1]);
 				sprintf (line, "%s -= %s;\n", temp->name, temp2->name);
 				break;
-			case insn_add:
+			case X86_INS_ADD:
+			case X86_INS_ADDPD:
+			case X86_INS_ADDPS:
+			case X86_INS_ADDSD:
+			case X86_INS_ADDSS:
+				temp = add_var (instruction.detail->x86.operands [0]);
+				temp2 = add_var (instruction.detail->x86.operands [1]);
 				sprintf (line, "%s += %s;\n", temp->name, temp2->name);
 				break;
-			case insn_mul:
+			case X86_INS_IMUL:
+			case X86_INS_MUL:
+				temp = add_var (instruction.detail->x86.operands [0]);
+				temp2 = add_var (instruction.detail->x86.operands [1]);
 				sprintf (line, "%s *= %s;\n", temp->name, temp2->name);
 				break;
-			case insn_div:
+			case X86_INS_DIV:
+			case X86_INS_IDIV:
+				temp = add_var (instruction.detail->x86.operands [0]);
+				temp2 = add_var (instruction.detail->x86.operands [1]);
 				sprintf (line, "%s /= %s;\n", temp->name, temp2->name);
 				break;
-			case insn_and:
+			case X86_INS_AND:
+			case X86_INS_ANDN:
+			case X86_INS_ANDNPD:
+			case X86_INS_ANDNPS:
+			case X86_INS_ANDPD:
+			case X86_INS_ANDPS:
+				temp = add_var (instruction.detail->x86.operands [0]);
+				temp2 = add_var (instruction.detail->x86.operands [1]);
 				sprintf (line, "%s &= %s;\n", temp->name, temp2->name);
 				break;
-			case insn_or:
+			case X86_INS_ORPD:
+			case X86_INS_ORPS:
+				temp = add_var (instruction.detail->x86.operands [0]);
+				temp2 = add_var (instruction.detail->x86.operands [1]);
 				sprintf (line, "%s |= %s;\n", temp->name, temp2->name);
 				break;
-			case insn_shr:
+			case X86_INS_SHR:
+			case X86_INS_SHRD:
+			case X86_INS_SHRX:
+				temp = add_var (instruction.detail->x86.operands [0]);
+				temp2 = add_var (instruction.detail->x86.operands [1]);
 				sprintf (line, "%s = %s >> %s;\n", temp->name, temp->name, temp2->name);
 				break;
-			case insn_shl:
+			case X86_INS_SHL:
+			case X86_INS_SHLD:
+			case X86_INS_SHLX:
+				temp = add_var (instruction.detail->x86.operands [0]);
+				temp2 = add_var (instruction.detail->x86.operands [1]);
 				sprintf (line, "%s = %s << %s;\n", temp->name, temp->name, temp2->name);
 				break;
-			case insn_xor:
+			case X86_INS_XORPD:
+			case X86_INS_XORPS:
+				temp = add_var (instruction.detail->x86.operands [0]);
+				temp2 = add_var (instruction.detail->x86.operands [1]);
 				sprintf (line, "%s ^= %s;\n", temp->name, temp2->name);
 				break;
-			case insn_not:
+			case X86_INS_NOT:
+				temp = add_var (instruction.detail->x86.operands [0]);
 				sprintf (line, "%s = ~%s;\n", temp->name, temp->name);
 				break;
-			case insn_dec:
+			case X86_INS_DEC:
+				temp = add_var (instruction.detail->x86.operands [0]);
 				sprintf (line, "%s --;\n", temp->name);
 				break;
-			case insn_inc:
+			case X86_INS_INC:
+				temp = add_var (instruction.detail->x86.operands [0]);
 				sprintf (line, "%s ++;\n", temp->name);
 				break;
-			case insn_pop:
+			case X86_INS_POP:
+			case X86_INS_POPAW:
+			case X86_INS_POPAL:
+			case X86_INS_POPCNT:
+			case X86_INS_POPF:
+			case X86_INS_POPFD:
+			case X86_INS_POPFQ:
 				break;
-			case insn_return:
+			case X86_INS_RET:
 				sprintf (line, "return eax;\n"); //All functions return EAX
 				break;
-			case insn_leave:
+			case X86_INS_LEAVE:
 				break;
-			case insn_push: //pushing onto the stack is how the caller passes arguments to the the callee
-				temp = add_var (instruction.operands->op);
+			case X86_INS_PUSH: //pushing onto the stack is how the caller passes arguments to the the callee
+			case X86_INS_PUSHAW:
+			case X86_INS_PUSHAL:
+			case X86_INS_PUSHF:
+			case X86_INS_PUSHFD:
+			case X86_INS_PUSHFQ:
+				temp = add_var (instruction.detail->x86.operands [0]);
 				if (temp->type != REG || (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp") && strcmp (temp->name, "ecx")))
 				{
 					//Add the variable to the argument array (caller_param). Cannot use argument linked list because the variables used are already linked into the local
@@ -133,8 +183,8 @@ void decompile_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_b
 					
 				}
 				break;
-			case insn_call:
-				target_addr = relative_insn (&instruction, index_to_addr (instruction.addr) + instruction.size);
+			case X86_INS_CALL:
+				target_addr = relative_insn (&instruction, instruction.address + instruction.size + parent->start);
 				if (addr_to_index (target_addr) < file_size)
 				{
 					if (architecture == ELFCLASS32)
@@ -193,15 +243,15 @@ void decompile_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_b
 				num_caller_params = 0;
 				caller_params_size = 0;
 				break;
-			case insn_test: //the test instruction is normally found in the context test %eax,%eax. This compares EAX to 0.
+			case X86_INS_TEST: //the test instruction is normally found in the context test %eax,%eax. This compares EAX to 0.
 				//Instruction after a compare or a test is usually a conditional jump
-				target_addr = relative_insn (&next_instruction, index_to_addr (next_instruction.addr) + next_instruction.size); 
-				temp = add_var (instruction.operands->op);
+				target_addr = relative_insn (&next_instruction, next_instruction.address + next_instruction.size + parent->start);
+				temp = add_var (instruction.detail->x86.operands [0]);
 				if (language_flag == 'f')
 				{
 					if (parent->flags & IS_WHILE)
 						sprintf (next_line, "while (%s %s 0)\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72]);
-					else if (target_addr > index_to_addr (next_instruction.addr))
+					else if (target_addr > next_instruction.address + parent->start)
 						sprintf (next_line, "if (%s %s 0)\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72]); //The conditional jumps start with "jump if below," which has an opcode of 0x72
 					else
 					{
@@ -214,15 +264,22 @@ void decompile_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_b
 					sprintf (line, "%s %s, %s\n", instruction.mnemonic, temp->name, temp->name);
 
 				break;
-			case insn_cmp: //the compare instructions just "compares" its two operands
-				temp = add_var (instruction.operands->op);
-				temp2 = add_var (instruction.operands->next->op);
+			case X86_INS_CMP: //the compare instructions just "compares" its two operands
+			case X86_INS_CMPPD:
+			case X86_INS_CMPPS:
+			case X86_INS_CMPSB:
+			case X86_INS_CMPSD:
+			case X86_INS_CMPSQ:
+			case X86_INS_CMPSS:
+			case X86_INS_CMPSW:
+				temp = add_var (instruction.detail->x86.operands [0]);
+				temp2 = add_var (instruction.detail->x86.operands [1]);
 				if (language_flag == 'f')
 				{
-					target_addr = relative_insn (&next_instruction, index_to_addr (next_instruction.addr) + next_instruction.size);
+					target_addr = relative_insn (&next_instruction, next_instruction.address + next_instruction.size + parent->start);
 					if (parent->flags & IS_WHILE)
 						sprintf (next_line, "while (%s %s %s)\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72], temp2->name);
-					else if (target_addr > index_to_addr (next_instruction.addr))
+					else if (target_addr > next_instruction.address + parent->start)
 						sprintf (next_line, "if (%s %s %s)\n", temp->name, test_conditions [next_instruction.bytes [0] - 0x72], temp2->name);
 					else
 					{
@@ -235,7 +292,25 @@ void decompile_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_b
 					sprintf (line, "%s %s, %s\n", instruction.mnemonic, temp->name, temp2->name);
 
 				break;
-			case insn_jcc:
+			case X86_INS_JAE:
+			case X86_INS_JA:
+			case X86_INS_JBE:
+			case X86_INS_JB:
+			case X86_INS_JCXZ:
+			case X86_INS_JECXZ:
+			case X86_INS_JE:
+			case X86_INS_JGE:
+			case X86_INS_JG:
+			case X86_INS_JLE:
+			case X86_INS_JL:
+			case X86_INS_JNE:
+			case X86_INS_JNO:
+			case X86_INS_JNP:
+			case X86_INS_JNS:
+			case X86_INS_JO:
+			case X86_INS_JP:
+			case X86_INS_JRCXZ:
+			case X86_INS_JS:
 				if (language_flag == 'f')
 				{
 					sprintf (line, next_line);
@@ -243,26 +318,29 @@ void decompile_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_b
 				}
 				else
 				{
-					target_addr = relative_insn (&instruction, index_to_addr (instruction.addr) + instruction.size);
+					target_addr = relative_insn (&instruction, instruction.address + instruction.size + parent->start);
 					sprintf (line, "%s %p\n", instruction.mnemonic, target_addr);
 				}
 
 				break;
-			case insn_jmp:
+			case X86_INS_JMP:
 				if (language_flag != 'f')
 				{
-					target_addr = relative_insn (&instruction, index_to_addr (instruction.addr) + instruction.size);
+					target_addr = relative_insn (&instruction, instruction.address + instruction.size + parent->start);
 					sprintf (line, "%s %p\n", instruction.mnemonic, target_addr);
 				}
 				break;
-			case insn_nop:
+			case X86_INS_NOP:
 				break;
 			default:
-				x86_format_insn (&instruction, line, 128, att_syntax);
+				sprintf (line, "\t%s\t%s", instruction.mnemonic, instruction.op_str);
 				line [strlen (line)] = '\n';
+				is_recognized = 0;
 				break;
 		}
 	}
+	else if (instruction.detail->x86.operands [0].type == X86_OP_REG && (instruction.detail->x86.operands [0].reg == X86_REG_EBP || instruction.detail->x86.operands [0].reg == X86_REG_ESP))
+		is_recognized = 0;
 
 	//Add the translated line to the final translation
 	if (actual_translation_size + strlen (line) + num_tabs > translation_size)
@@ -270,9 +348,9 @@ void decompile_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_b
 		translation_size = 2*(translation_size + strlen (line) + num_tabs);
 		translation = realloc (translation, translation_size);
 	}
-	if (language_flag == 'f')
+	if (language_flag == 'f' && is_recognized)
 	{
-		if (line [0] && (instruction.type != insn_jcc || line [0] == '}'))
+		if (line [0] && ((instruction.id < X86_INS_JAE || instruction.id > X86_INS_JS || instruction.id == X86_INS_JMP) || line [0] == '}'))
 		{
 			for (i = 0; i < num_tabs; i ++)
 			{
@@ -280,7 +358,7 @@ void decompile_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_b
 				actual_translation_size ++;
 			}
 		}
-		else if (instruction.type == insn_jcc && line [0] != '}')
+		else if ((instruction.id >= X86_INS_JAE && instruction.id <= X86_INS_JS && instruction.id != X86_INS_JMP) && line [0] != '}')
 		{
 			for (i = 0; i < num_tabs-1; i ++)
 			{
@@ -289,15 +367,15 @@ void decompile_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_b
 			}
 		}
 	}
-	else if ((!temp || (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp"))) && instruction.type != insn_push && instruction.type != insn_pop && instruction.type != insn_leave && instruction.type != insn_nop)
+	else if (is_recognized && (!temp || (strcmp (temp->name, "ebp") && strcmp (temp->name, "esp"))) && strncmp (instruction.mnemonic, "push", 4)  && strncmp (instruction.mnemonic, "pop", 3) && instruction.id != X86_INS_LEAVE && instruction.id != X86_INS_NOP)
 	{
 		sprintf (&(translation [actual_translation_size]), "\t");
 		actual_translation_size ++;
 	}
 	strcpy (&(translation [actual_translation_size]), line);
-	if (language_flag == 'f')
+	if (language_flag == 'f' && is_recognized)
 	{
-		if (instruction.type == insn_jcc && line [0] != '}')
+		if ((instruction.id >= X86_INS_JAE && instruction.id <= X86_INS_JS && instruction.id != X86_INS_JMP) && line [0] != '}')
 		{
 			actual_translation_size = strlen (translation);
 			for (i = 0; i < num_tabs - 1; i ++)
@@ -321,7 +399,7 @@ void disassemble_jump_block (jump_block* to_translate)
 
 	//Translate every instruction contained in jump block
 	for (i = 0; i < to_translate->num_instructions; i ++)
-		disassemble_insn (to_translate->instructions [i]);
+		disassemble_insn (to_translate->instructions [i], to_translate);
 }
 
 void partial_decompile_jump_block (jump_block* to_translate, function* parent)
@@ -365,22 +443,23 @@ void decompile_jump_block (jump_block* to_translate, function* parent)
 	int len;
 	unsigned int target = 0;
 	unsigned int target2 = 0;
+	cs_insn* last_instruction = &(to_translate->instructions [to_translate->num_instructions-1]);
 
-	if (to_translate->instructions [to_translate->num_instructions-1].type == insn_jmp) //Get unconditional jump target address, if possible
+	if (last_instruction->id == X86_INS_JMP) //Get unconditional jump target address, if possible
 	{
-		target = to_translate->instructions [to_translate->num_instructions-1].size + index_to_addr (to_translate->instructions [to_translate->num_instructions-1].addr);
-		target = relative_insn (&(to_translate->instructions [to_translate->num_instructions-1]), target);
+		target = last_instruction->size + last_instruction->address + to_translate->start;
+		target = relative_insn (last_instruction, target);
 	}
-	if (to_translate->instructions [to_translate->num_instructions-1].type == insn_jcc) //Get conditional jump target address, if possible
+	if (last_instruction->id >= X86_INS_JAE && last_instruction->id <= X86_INS_JS && last_instruction->id != X86_INS_JMP) //Get conditional jump target address, if possible
 	{
-		target2 = to_translate->instructions [to_translate->num_instructions-1].size + index_to_addr (to_translate->instructions [to_translate->num_instructions-1].addr);
-		target2 = relative_insn (&(to_translate->instructions [to_translate->num_instructions-1]), target2);
+		target2 = last_instruction->size + last_instruction->address + to_translate->start;
+		target2 = relative_insn (last_instruction, target2);
 	}
-	unsigned int orig = index_to_addr (to_translate->instructions [to_translate->num_instructions-1].addr); //Get address of last instruction in block
+	unsigned int orig = last_instruction->address + to_translate->start; //Get address of last instruction in block
 
 	//Need to print out a "}" at the end of a non-nested IF/ELSE statement, so we need to override the "do not place } at an unconditional jump address" rule.
 	if (to_translate->next && target && to_translate->next->flags & IS_ELSE)
-		file_buf [to_translate->instructions [to_translate->num_instructions-1].addr] = 0xea;
+		file_buf [last_instruction->address + addr_to_index (to_translate->start)] = 0xea;
 
 	//Sets up pivot addresses for "}" placement algorithm.
 	//Pivot addresses is the conditional jump of the IF statement associated with the ELSE right before the duplicated target
@@ -609,17 +688,19 @@ void jump_block_preprocessing (jump_block* to_process, function* parent)
 	int j = 0;
 	unsigned int target = 0;
 	unsigned int target2 = 0;
-	if (to_process->instructions [to_process->num_instructions-1].type == insn_jmp)
+	cs_insn* last_instruction = &(to_process->instructions [to_process->num_instructions-1]);
+
+	if (last_instruction->id == X86_INS_JMP)
 	{
-		target = to_process->instructions [to_process->num_instructions-1].size + index_to_addr (to_process->instructions [to_process->num_instructions-1].addr);
-		target = relative_insn (&(to_process->instructions [to_process->num_instructions-1]), target);
+		target = last_instruction->size + last_instruction->address + to_process->start;
+		target = relative_insn (last_instruction, target);
 	}
-	if (to_process->instructions [to_process->num_instructions-1].type == insn_jcc)
+	if (last_instruction->id >= X86_INS_JAE && last_instruction->id <= X86_INS_JS && last_instruction->id != X86_INS_JMP)
 	{
-		target2 = to_process->instructions [to_process->num_instructions-1].size + index_to_addr (to_process->instructions [to_process->num_instructions-1].addr);
-		target2 = relative_insn (&(to_process->instructions [to_process->num_instructions-1]), target2);
+		target2 = last_instruction->size + last_instruction->address + to_process->start;
+		target2 = relative_insn (last_instruction, target2);
 	}
-	unsigned int orig = index_to_addr (to_process->instructions [to_process->num_instructions-1].addr);
+	unsigned int orig = last_instruction->address + to_process->start;
 
 	if (target2)
 		to_process->next->flags |= IS_IF;
@@ -627,7 +708,7 @@ void jump_block_preprocessing (jump_block* to_process, function* parent)
 	if (to_process->flags & IS_LOOP)
 		to_process->next->flags |= IS_AFTER_LOOP;
 
-	if (target || to_process->instructions [to_process->num_instructions-1].type == insn_jcc)
+	if (target || (last_instruction->id >= X86_INS_JAE && last_instruction->id <= X86_INS_JS && last_instruction->id != X86_INS_JMP))
 	{
 		for (i = 0; i < parent->num_jump_addrs; i++)
 		{
@@ -675,13 +756,11 @@ void jump_block_preprocessing (jump_block* to_process, function* parent)
 		struct search_params params;
 		jump_block* while_block;
 		jump_block* new_block;
-		x86_oplist_t* current1;
-		x86_oplist_t* current2;		
 		params.key = target;
 		params.ret = (void**)&while_block;
 		list_loop (search_start_addrs, to_process, to_process, params); //Search for the jump block targetted by this jump instructions
 		unsigned int target3;
-		target3 = while_block->instructions [while_block->num_instructions-1].size + index_to_addr (while_block->instructions [while_block->num_instructions-1].addr);
+		target3 = while_block->instructions [while_block->num_instructions-1].size + while_block->instructions [while_block->num_instructions-1].address + while_block->start;
 		target3 = relative_insn (&(while_block->instructions [while_block->num_instructions-1]), target3);
 
 		if (while_block->flags & IS_AFTER_LOOP)
@@ -723,41 +802,23 @@ void jump_block_preprocessing (jump_block* to_process, function* parent)
 			new_block = malloc (sizeof (jump_block));
 			*new_block = *while_block;
 			link (to_process, new_block);
-			new_block->instructions = malloc ((new_block->num_instructions+1) * sizeof (x86_insn_t));
+			new_block->instructions = (cs_insn*)malloc ((new_block->num_instructions+1) * sizeof (cs_insn));
 			for (i = 0; i < new_block->num_instructions; i++) //Copy all instructions from while_block
 			{
 				new_block->instructions [i] = while_block->instructions [i];
-				if (while_block->instructions [i].operand_count)
-				{
-					new_block->instructions [i].operands = malloc (sizeof (x86_oplist_t));
-					current1 = new_block->instructions [i].operands;
-					current2 = while_block->instructions [i].operands;
-					current1->op = current2->op;
-					current2 = current2->next;
-					while (current2)
-					{
-						current1->next = malloc (sizeof (x86_oplist_t));
-						current1 = current1->next;
-						current1->op = current2->op;
-						current2 = current2->next;
-					}
-					current1->next = NULL;
-				}
+				new_block->instructions [i].detail = (cs_detail*)malloc (sizeof(cs_detail));
+				*(new_block->instructions [i].detail) = *(while_block->instructions [i].detail);
 			}
 					
-			new_block->instructions [i-1].bytes [0] = new_block->instructions [i-1].bytes [0];
-			new_block->instructions [i-1].operands->op.type = op_absolute;
-			new_block->instructions [i-1].operands->op.data.dword = while_block->end;
-			new_block->instructions [i-1].operands->next = NULL;
 			parent->num_jump_addrs ++;
 			parent->jump_addrs [parent->num_jump_addrs-1] = while_block->end;
-			parent->orig_addrs [parent->num_jump_addrs-1] = index_to_addr (to_process->instructions [i-1].addr);
+			parent->orig_addrs [parent->num_jump_addrs-1] = to_process->instructions [i-1].address + to_process->start;
 
 			new_block->flags |= IS_WHILE;
 			while_block->flags |= NO_TRANSLATE;
 			for (i = 0; i < parent->num_jump_addrs; i++)
 			{
-				if (parent->orig_addrs [i] == index_to_addr (while_block->instructions [while_block->num_instructions-1].addr))
+				if (parent->orig_addrs [i] == while_block->instructions [while_block->num_instructions-1].address + while_block->start)
 					parent->jump_addrs [i] = 0;
 			}
 		}

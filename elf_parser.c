@@ -402,6 +402,7 @@ void init_elf_parser (char* file_name)
 	init_file_buf (file_name);
 
 	Elf32_Ehdr* header = (Elf32_Ehdr*)file_buf;
+	Elf64_Ehdr* header64 = (Elf64_Ehdr*)file_buf;
 
 	//Sanity check
 	header = (Elf32_Ehdr*)file_buf;
@@ -460,10 +461,10 @@ void init_elf_parser (char* file_name)
 	}
 	else if (architecture == ELFCLASS64)
 	{
-		Elf64_Phdr* program_headers = (Elf64_Phdr*)(file_buf + header->e_phoff);
+		Elf64_Phdr* program_headers = (Elf64_Phdr*)(file_buf + header64->e_phoff);
 		int i;
 
-		for (i = 0; i < header->e_phnum; i ++)
+		for (i = 0; i < header64->e_phnum; i ++)
 		{
 			if (program_headers [i].p_type == PT_LOAD)
 			{
@@ -472,7 +473,7 @@ void init_elf_parser (char* file_name)
 				break;
 			}
 		}
-		if (i == header->e_phnum)
+		if (i == header64->e_phnum)
 		{
 			printf ("CRITICAL ERROR: No loadable segments\n");
 			exit (-1);

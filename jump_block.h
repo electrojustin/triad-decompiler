@@ -1,5 +1,5 @@
 #include <stddef.h>
-#include <libdis.h>
+#include <capstone/capstone.h>
 
 #include "elf_parser.h"
 
@@ -17,15 +17,16 @@
 #define IS_WHILE 512
 #define NO_TRANSLATE 1024
 
+csh handle;
 unsigned int next_flags;
 extern char num_push_ebp;
 
 struct jump_block
 {
 	unsigned int flags;
-	unsigned int start;
-	unsigned int end;
-	x86_insn_t* instructions; //Array of instructions contained in jump block in human readable format
+	unsigned long long start;
+	unsigned long long end;
+	cs_insn* instructions; //Array of instructions contained in jump block in human readable format
 	int num_instructions;
 	size_t instructions_buf_size;
 	unsigned int* conditional_jumps; //Target addresses of all conditional jumps in block
@@ -51,7 +52,7 @@ void search_start_addrs (jump_block* to_test, struct search_params arg);
 void resolve_conditional_jumps (jump_block* benefactor);
 void print_jump_block (jump_block* to_print);
 void print_jump_block_list (jump_block* to_print);
-x86_insn_t* get_insn_by_addr (jump_block* parent, unsigned int addr);
-unsigned int relative_insn (x86_insn_t* insn, unsigned int address);
+cs_insn* get_insn_by_addr (jump_block* parent, unsigned int addr);
+long long relative_insn (cs_insn* insn, unsigned long long address);
 void cleanup_instruction_list (jump_block* to_cleanup, char scrub_insn);
 void parse_instructions (jump_block* to_parse);

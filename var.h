@@ -1,6 +1,8 @@
-#include <libdis.h>
+#include <capstone/capstone.h>
 
 #pragma once
+
+#define MAX_REGNAME 3
 
 enum var_type
 {
@@ -39,8 +41,8 @@ int num_caller_params;
 size_t caller_params_size;
 
 char* gen_var_name (void); //Generates a unique variable name
-var* init_var (var* to_init, x86_op_t operand); //Translates an operand into a C style variable
-var* add_var (x86_op_t operand); //Add variable to linked list if not a dupe
+var* init_var (var* to_init, cs_x86_op operand); //Translates an operand into a C style variable
+var* add_var (cs_x86_op operand); //Add variable to linked list if not a dupe
 void search_vars (var* to_check, var* key);
 void cleanup_var (var* to_cleanup);
 void clean_var_list (var* to_cleanup);

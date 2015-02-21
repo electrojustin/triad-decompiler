@@ -14,8 +14,8 @@ char language_flag; //f for full decompilation, p for partial decompilation (don
 void translate_func (function* to_translate); //Translate and print the C equivalent of the current function
 void decompile_jump_block (jump_block* to_translate, function* parent); //Translate all instructions in jump block
 void jump_block_preprocessing (jump_block* to_process, function* parent);
-void decompile_insn (x86_insn_t instruction, x86_insn_t next_instruction, jump_block* parent);
-void disassemble_insn (x86_insn_t instruction);
+void decompile_insn (cs_insn instruction, cs_insn next_instruction, jump_block* parent);
+void disassemble_insn (cs_insn instruction, jump_block* parent);
 void disassemble_jump_block (jump_block* to_translate);
 void partial_decompile_jump_block (jump_block* to_translate, function* parent);
 void print_declarations (var* to_print, char should_tab); //Helper function. We frequently need to print a variable's type followed by its name

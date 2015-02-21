@@ -84,7 +84,7 @@ void resolve_jumps (jump_block* to_resolve, function* benefactor)
 		}
 
 		benefactor->jump_addrs [benefactor->num_jump_addrs-1] = relative_insn (&(to_resolve->instructions [to_resolve->num_instructions-1]), to_resolve->end);
-		benefactor->orig_addrs [benefactor->num_jump_addrs-1] = index_to_addr (to_resolve->instructions [to_resolve->num_instructions-1].addr);
+		benefactor->orig_addrs [benefactor->num_jump_addrs-1] = to_resolve->instructions [to_resolve->num_instructions-1].address + to_resolve->start;
 	}
 }
 
@@ -154,10 +154,9 @@ void split_jump_blocks (jump_block* to_split, unsigned int addr)
 	jump_block* new_block;
 	int i = 0;
 	int j;
-	x86_oplist_t* next;
 	unsigned int flags = to_split->flags;
-	x86_insn_t* split_instruction;
-	while (index_to_addr (to_split->instructions [i].addr) != addr && i < to_split->num_instructions)
+	cs_insn* split_instruction;
+	while (to_split->instructions [i].address + to_split->start != addr && i < to_split->num_instructions)
 		i ++;
 
 	if (i >= to_split->num_instructions)
@@ -166,19 +165,10 @@ void split_jump_blocks (jump_block* to_split, unsigned int addr)
 		return;
 	}
 
-	new_block = init_jump_block (malloc (sizeof (jump_block)), index_to_addr (to_split->instructions [i].addr));
+	new_block = init_jump_block (malloc (sizeof (jump_block)), to_split->instructions [i].address + to_split->start);
 
-	for (j = i; j < to_split->num_instructions; j++)
-	{
-		while (to_split->instructions [j].operands && to_split->instructions [j].operands->next)
-		{
-			next = to_split->instructions [j].operands->next;
-			free (to_split->instructions [j].operands);
-			to_split->instructions [j].operands = next;
-		}
-		free (to_split->instructions [j].operands);
-		to_split->instructions [j].operands = NULL;
-	}
+	for (j = i; j < to_split->num_instructions; j ++)
+		free (to_split->instructions [j].detail);
 	
 	to_split->num_instructions = i;
 	to_split->end = new_block->start;

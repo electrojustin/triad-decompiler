@@ -16,7 +16,7 @@ union ElfN_Rel_ptr
 } ElfN_Rel_ptr;
 
 char* file_buf; //Buffer into which the file is read. Must be free'd
-unsigned int file_size; //Size of file in bytes
+size_t file_size; //Size of file in bytes
 unsigned int text_offset; //Number of bytes from file beginning where .text starts
 unsigned int end_of_text;
 unsigned int text_addr; //Virtual memory address .text is loaded into

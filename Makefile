@@ -3,7 +3,7 @@ mrproper: triad clean
 debug: CFLAGS=-g
 debug: triad
 triad: main.o elf_parser.o jump_block.o function.o var.o lang_gen.o
-	gcc $(CFLAGS) main.o elf_parser.o jump_block.o function.o var.o lang_gen.o -o triad -ldisasm
+	gcc $(CFLAGS) main.o elf_parser.o jump_block.o function.o var.o lang_gen.o -o triad -lcapstone
 sys_tests: test arith_test control_flow_test
 test: test.c
 	gcc -g -m32 test.c -o test
