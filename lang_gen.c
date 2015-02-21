@@ -812,7 +812,7 @@ void jump_block_preprocessing (jump_block* to_process, function* parent)
 					
 			parent->num_jump_addrs ++;
 			parent->jump_addrs [parent->num_jump_addrs-1] = while_block->end;
-			parent->orig_addrs [parent->num_jump_addrs-1] = to_process->instructions [i-1].address + to_process->start;
+			parent->orig_addrs [parent->num_jump_addrs-1] = new_block->instructions [i-1].address + to_process->start;
 
 			new_block->flags |= IS_WHILE;
 			while_block->flags |= NO_TRANSLATE;
