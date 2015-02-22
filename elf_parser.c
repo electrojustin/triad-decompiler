@@ -164,7 +164,7 @@ void parse_sections64 (void)
 		{
 			symbol_table.arch2 = (Elf64_Sym*)(file_buf + current_offset);
 			symbol_table_end.arch2 = (Elf64_Sym*)((char*)symbol_table.arch2 + section_table [loop].sh_size);
-			if ((char*)symbol_table.arch2 < file_buf || (unsigned long long)symbol_table.arch1 > (unsigned long long)file_buf + file_size || (char*)symbol_table_end.arch1 < file_buf || (unsigned long long)symbol_table_end.arch1 > (unsigned long long)file_buf + file_size || symbol_table.arch1 > symbol_table_end.arch1)
+			if ((char*)symbol_table.arch2 < file_buf || (unsigned long long)symbol_table.arch2 > (unsigned long long)file_buf + file_size || (char*)symbol_table_end.arch2 < file_buf || (unsigned long long)symbol_table_end.arch2 > (unsigned long long)file_buf + file_size || symbol_table.arch2 > symbol_table_end.arch2)
 			{
 				symbol_table.arch2 = NULL;
 				symbol_table_end.arch2 = NULL;
@@ -371,7 +371,7 @@ void find_main64 (void)
 	loop ++;
 	while (&(symbol_table.arch2 [loop]) < symbol_table_end.arch2)
 	{
-		if (symbol_table.arch2 [loop].st_name && symbol_table.arch1 [loop].st_value)
+		if (symbol_table.arch2 [loop].st_name && symbol_table.arch2 [loop].st_value)
 		{
 			if (!strcmp (string_table + symbol_table.arch2 [loop].st_name, "main"))
 			{
