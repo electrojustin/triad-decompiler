@@ -38,6 +38,7 @@ void decompile_insn (cs_insn instruction, cs_insn next_instruction, jump_block* 
 	int i;
 	int target_addr;
 	char is_recognized = 1;
+	char* plt_entry;
 
 	if (!instruction.detail->x86.op_count || instruction.detail->x86.operands [0].type != X86_OP_REG || (instruction.detail->x86.operands [0].reg != X86_REG_RBP && instruction.detail->x86.operands [0].reg != X86_REG_RSP && instruction.detail->x86.operands [0].reg != X86_REG_EBP && instruction.detail->x86.operands [0].reg != X86_REG_ESP))
 	{
@@ -189,8 +190,11 @@ void decompile_insn (cs_insn instruction, cs_insn next_instruction, jump_block* 
 				{
 					if (architecture == ELFCLASS32)
 						name_sym = find_reloc_sym (*(int*)&(file_buf [addr_to_index (target_addr)+2]));
-					else
-						name_sym64 = find_reloc_sym64 (*(int*)&(file_buf [addr_to_index (target_addr)+2]));
+                                        else                                                   
+                                        {                                                      
+                                                plt_entry = &(file_buf [addr_to_index (target_addr)+2]);
+                                                name_sym64 = find_reloc_sym64 ((*(short*)(plt_entry) | ((int)*(short*)(plt_entry+2) << 16)) + target_addr + 6);                               
+                                        }
 					if (name_sym || name_sym64)
 					{
 						if (architecture == ELFCLASS32)

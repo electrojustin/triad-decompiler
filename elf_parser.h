@@ -12,7 +12,7 @@ union ElfN_Sym_ptr
 union ElfN_Rel_ptr
 {
 	Elf32_Rel* arch1;
-	Elf64_Rel* arch2;
+	Elf64_Rela* arch2;
 } ElfN_Rel_ptr;
 
 char* file_buf; //Buffer into which the file is read. Must be free'd

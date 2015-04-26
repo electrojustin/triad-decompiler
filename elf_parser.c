@@ -246,7 +246,7 @@ Elf64_Sym* find_reloc_sym64 (unsigned int addr)
 	if (loop >= num_dynamic_symbols)
 		return NULL;
 	else
-		return &(dynamic_symbol_table.arch2 [relocation_table.arch2 [loop].r_info >> 8]);
+		return &(dynamic_symbol_table.arch2 [relocation_table.arch2 [loop].r_info >> 32]);
 }
 
 void get_dyn_syms (void)
@@ -277,17 +277,17 @@ void get_dyn_syms (void)
 	dynamic_table = (Elf32_Dyn*)(file_buf + segment_table [i].p_offset);
 
 	j = 0;
-	while (&(dynamic_table [j]) < (Elf32_Dyn*)(dynamic_table + segment_table[i].p_filesz))
+	while (dynamic_table [j].d_tag != DT_NULL)
 	{
-		if (dynamic_string_table && dynamic_symbol_table.arch1 && num_dynamic_symbols && relocation_table.arch1)
-			break;
 		if (dynamic_table [j].d_tag == DT_STRTAB)
 			dynamic_string_table = (char*)(file_buf + addr_to_index (dynamic_table [j].d_un.d_ptr));
 		if (dynamic_table [j].d_tag == DT_SYMTAB)
 			dynamic_symbol_table.arch1 = (Elf32_Sym*)(file_buf + addr_to_index (dynamic_table [j].d_un.d_ptr));
-		if (dynamic_table [j].d_tag == DT_GNU_HASH)
-			num_dynamic_symbols = *(int*)(file_buf + addr_to_index (dynamic_table [j].d_un.d_ptr) + 4);
-		if (dynamic_table [j].d_tag == DT_JMPREL)
+		if (dynamic_table [j].d_tag == DT_RELSZ)
+			num_dynamic_symbols += dynamic_table [j].d_un.d_val /sizeof (Elf32_Rel);
+		if (dynamic_table [j].d_tag == DT_PLTRELSZ)
+			num_dynamic_symbols = dynamic_table [j].d_un.d_val / sizeof (Elf32_Rel);
+		if (dynamic_table [j].d_tag == DT_REL)
 			relocation_table.arch1 = (Elf32_Rel*)(file_buf + addr_to_index (dynamic_table [j].d_un.d_ptr));
 	
 		j ++;
@@ -322,18 +322,18 @@ void get_dyn_syms64 (void)
 	dynamic_table = (Elf64_Dyn*)(file_buf + segment_table [i].p_offset);
 	
 	j = 0;
-	while (&(dynamic_table [j]) < (Elf64_Dyn*)(dynamic_table + segment_table[i].p_filesz))
+	while (dynamic_table [j].d_tag != DT_NULL)
 	{
-		if (dynamic_string_table && dynamic_symbol_table.arch2 && num_dynamic_symbols && relocation_table.arch2)
-			break;
 		if (dynamic_table [j].d_tag == DT_STRTAB)
 			dynamic_string_table = (char*)(file_buf + addr_to_index (dynamic_table [j].d_un.d_ptr));
 		if (dynamic_table [j].d_tag == DT_SYMTAB)
 			dynamic_symbol_table.arch2 = (Elf64_Sym*)(file_buf + addr_to_index (dynamic_table [j].d_un.d_ptr));
-		if (dynamic_table [j].d_tag == DT_GNU_HASH)
-			num_dynamic_symbols = *(int*)(file_buf + addr_to_index (dynamic_table [j].d_un.d_ptr) + 4);
-		if (dynamic_table [j].d_tag == DT_JMPREL)
-			relocation_table.arch2 = (Elf64_Rel*)(file_buf + addr_to_index (dynamic_table [j].d_un.d_ptr));
+		if (dynamic_table [j].d_tag == DT_RELASZ)
+			num_dynamic_symbols += dynamic_table [j].d_un.d_ptr /sizeof (Elf64_Rela);
+		if (dynamic_table [j].d_tag == DT_PLTRELSZ)
+			num_dynamic_symbols = dynamic_table [j].d_un.d_ptr / sizeof (Elf64_Rela);
+		if (dynamic_table [j].d_tag == DT_RELA)
+			relocation_table.arch2 = (Elf64_Rela*)(file_buf + addr_to_index (dynamic_table [j].d_un.d_ptr));
 	
 		j ++;
 	}
