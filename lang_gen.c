@@ -56,14 +56,28 @@ void decompile_insn (cs_insn instruction, cs_insn next_instruction, jump_block* 
 				temp2 = add_var (instruction.detail->x86.operands [1]);
 				if (instruction.id != X86_INS_LEA)
 				{
-					if (temp->type != DEREF && temp2->type != DEREF)
-						sprintf (line, "%s = %s;\n", temp->name, temp2->name);
-					else if (temp->type == DEREF && temp2->type != DEREF)
-						sprintf (line, "*(%s*)(%s+(%d)) = %s;\n", temp->c_type, temp->name, temp->loc.disp, temp2->name);
-					else if (temp->type != DEREF && temp2->type == DEREF)
-						sprintf (line, "%s = *(%s*)(%s+(%d));\n", temp->name, temp2->c_type, temp2->name, temp2->loc.disp);
+					if (constant_format [1] == 'd')
+					{
+						if (temp->type != DEREF && temp2->type != DEREF)
+							sprintf (line, "%s = %s;\n", temp->name, temp2->name);
+						else if (temp->type == DEREF && temp2->type != DEREF)
+							sprintf (line, "*(%s*)(%s+(%d)) = %s;\n", temp->c_type, temp->name, temp->loc.disp, temp2->name);
+						else if (temp->type != DEREF && temp2->type == DEREF)
+							sprintf (line, "%s = *(%s*)(%s+(%d));\n", temp->name, temp2->c_type, temp2->name, temp2->loc.disp);
+						else
+							sprintf (line, "*(%s*)(%s+(%d)) = *(%s*)(%s+(%d))", temp->c_type, temp->name, temp->loc.disp, temp2->c_type, temp2->name, temp2->loc.disp);
+					}
 					else
-						sprintf (line, "*(%s*)(%s+(%d)) = *(%s*)(%s+(%d))", temp->c_type, temp->name, temp->loc.disp, temp2->c_type, temp2->name, temp2->loc.disp);
+					{
+						if (temp->type != DEREF && temp2->type != DEREF)
+							sprintf (line, "%s = %s;\n", temp->name, temp2->name);
+						else if (temp->type == DEREF && temp2->type != DEREF)
+							sprintf (line, "*(%s*)(%s+(%p)) = %s;\n", temp->c_type, temp->name, temp->loc.disp, temp2->name);
+						else if (temp->type != DEREF && temp2->type == DEREF)
+							sprintf (line, "%s = *(%s*)(%s+(%p));\n", temp->name, temp2->c_type, temp2->name, temp2->loc.disp);
+						else
+							sprintf (line, "*(%s*)(%s+(%p)) = *(%s*)(%s+(%p))", temp->c_type, temp->name, temp->loc.disp, temp2->c_type, temp2->name, temp2->loc.disp);
+					}
 				}
 				else
 					sprintf (line, "%s = (%s)&%s;\n", temp->name, temp2->c_type, temp2->name);
