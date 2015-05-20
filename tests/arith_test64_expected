@@ -1,0 +1,92 @@
+
+int main (void)
+{
+	int a;
+	int e;
+	int d;
+	int c;
+	register long long esi;
+	register long long eax;
+	register long long edx;
+	int b;
+
+	a = 2;
+	b = 3;
+	edx = b;
+	eax = a;
+	esi = edx;
+	edx = eax;
+	eax = func1 ();
+	c = eax;
+	edx = b;
+	eax = a;
+	esi = edx;
+	edx = eax;
+	eax = func2 ();
+	d = eax;
+	edx = b;
+	eax = a;
+	esi = edx;
+	edx = eax;
+	eax = func3 ();
+	e = eax;
+	edx = c;
+	eax = d;
+	edx += eax;
+	eax = e;
+	eax += edx;
+	return eax;
+}
+
+
+int func3 (void)
+{
+	int f;
+	register long long r15;
+	register long long eax;
+	register long long esi;
+	int g;
+	register long long edi;
+
+	f = edi;
+	g = esi;
+	eax = f;
+	eax *= g;
+	return eax;
+	r15 = edi;
+	r15 = (long long)&rip;
+}
+
+
+int func2 (void)
+{
+	int h;
+	register long long eax;
+	register long long esi;
+	int i;
+	register long long edi;
+
+	h = edi;
+	i = esi;
+	eax = i;
+	eax -= h;
+	return eax;
+}
+
+
+int func1 (void)
+{
+	int j;
+	register long long eax;
+	register long long esi;
+	int k;
+	register long long edi;
+
+	j = edi;
+	k = esi;
+	edi = j;
+	eax = k;
+	eax += edi;
+	return eax;
+}
+

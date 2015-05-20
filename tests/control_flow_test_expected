@@ -1,0 +1,77 @@
+
+int main (void)
+{
+	int a;
+	register int eax;
+	int d;
+	int c;
+	int b;
+
+	a = 1;
+	b = 10;
+0x80483df:
+	c = 11;
+	d = 0;
+	while (a > 0)
+	{
+		a -= 1;
+		if (b != 0)
+		{
+			break;
+		}
+		b += 1;
+	}
+	do
+	{
+		b -= 1;
+		if (c != 0)
+		{
+			continue;
+		}
+		c -= 1;
+		eax = b;
+	} while (eax >= a);
+	if (b != 0)
+	{
+		if (a != 0)
+		{
+			c = 1;
+		}
+		else
+		{
+			c = 2;
+		}
+	}
+	else
+	{
+		if (d == 0)
+		{
+			c = 6;
+		}
+	}
+	a = 0;
+	if (a != 0)
+	{
+		a = 2;
+	}
+	else
+	{
+		a = 3;
+	}
+	while (a <= 9)
+	{
+		a += 1;
+	}
+	a = 11;
+	eax = c;
+	if (eax == b)
+	{
+		goto 0x80483df;
+	}
+	c = 10;
+	eax = c;
+	b = eax;
+	eax = c;
+	return eax;
+}
+

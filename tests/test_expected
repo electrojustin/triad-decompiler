@@ -1,0 +1,45 @@
+Error: invalid jump instruction at 0x80483f4
+
+int main (void)
+{
+	int a;
+	int b;
+	register int eax;
+
+	a = 1;
+	eax = a;
+	if (eax != 2)
+	{
+		if (eax > 2)
+		{
+			if (eax != 1)
+			{
+			}
+			else
+			{
+				if (eax != 3)
+				{
+					if (eax != 4)
+					{
+					}
+				}
+				else
+				{
+					b = 2;
+				}
+				b = 1;
+			}
+			b = -6;
+		}
+		b = 1024;
+		return eax;
+}
+
+
+int __x86.get_pc_thunk.bx (void)
+{
+	register int ebx;
+
+	ebx = *(int*)(esp+(0));
+}
+

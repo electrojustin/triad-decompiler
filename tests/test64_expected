@@ -1,0 +1,41 @@
+Error: invalid jump instruction at 0x4004dd
+
+int main (void)
+{
+	int a;
+	register long long edi;
+	register long long r15;
+	int b;
+	register long long eax;
+
+	a = 1;
+	eax = a;
+	if (eax != 2)
+	{
+		if (eax > 2)
+		{
+			if (eax != 1)
+			{
+			}
+			else
+			{
+				if (eax != 3)
+				{
+					if (eax != 4)
+					{
+					}
+				}
+				else
+				{
+					b = 2;
+				}
+				b = 1;
+			}
+			b = -6;
+		}
+		b = 1024;
+		return eax;
+		r15 = edi;
+		r15 = (long long)&rip;
+}
+

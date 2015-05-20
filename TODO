@@ -1,6 +1,8 @@
 ++++CONTROL FLOW++++
 {
 
+Fix control flow decompilation (too brittle as is). Perhaps use AI? - LONG TERM
+
 Add Switches - LONG TERM
 
 }
@@ -15,12 +17,8 @@ Add support for datastructures and arrays - LONG TERM
 MISC
 {
 
-Add in a binary editor to inject code and edit the surrounding jumps - NEXT RELEASE
-
 MORE DOCUMENTATION
 
 CODE CLEANUPS
-
-Switch to capstone disassembler and support x86_64 - LONG TERM
 
 }

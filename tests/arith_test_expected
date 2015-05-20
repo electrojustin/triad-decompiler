@@ -1,0 +1,63 @@
+
+int main (void)
+{
+	register int ecx;
+	int f;
+	register int edx;
+	int e;
+	int d;
+	register int eax;
+	int c;
+	int b;
+	int a;
+
+	ecx = (int)&esp;
+	a = 2;
+	b = 3;
+	eax = func1 (a, b, *(int*)(ecx+(-4)));
+	c = eax;
+	eax = func2 (a, b);
+	d = eax;
+	eax = func3 (a, b);
+	e = eax;
+	edx = c;
+	eax = d;
+	edx += eax;
+	eax = e;
+	eax += edx;
+	ecx = f;
+	return eax;
+}
+
+
+int func3 (int g, int h)
+{
+	register int eax;
+
+	eax = g;
+	eax *= h;
+	return eax;
+}
+
+
+int func2 (int j, int i)
+{
+	register int eax;
+
+	eax = i;
+	eax -= j;
+	return eax;
+}
+
+
+int func1 (int k, int l)
+{
+	register int edx;
+	register int eax;
+
+	edx = k;
+	eax = l;
+	eax += edx;
+	return eax;
+}
+
