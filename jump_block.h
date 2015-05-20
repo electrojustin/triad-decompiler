@@ -45,7 +45,7 @@ struct search_params //Throwaway parameter structure for searching through start
 	unsigned int key;
 };
 
-jump_block* init_jump_block (jump_block* to_init, unsigned int start_addr);
+jump_block* init_jump_block (jump_block* to_init, unsigned int start_addr, unsigned int stop_addr);
 void cleanup_jump_block (jump_block* to_cleanup, char scrub_insn);
 void jump_block_list_cleanup (jump_block* to_cleanup, char scrub_insn);
 void search_start_addrs (jump_block* to_test, struct search_params arg);

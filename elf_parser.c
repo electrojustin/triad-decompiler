@@ -67,9 +67,6 @@ void parse_sections (void)
 	char* current_name;
 	unsigned int current_offset;
 
-	text_offset = 0;
-	text_addr = 0;
-	end_of_text = 0;
 	symbol_table.arch1 = 0;
 	symbol_table_end.arch1 = 0;
 	string_table = 0;
@@ -85,17 +82,6 @@ void parse_sections (void)
 		{
 			printf ("ERROR: Section number %d is malformed. Skipping...\n", loop);
 			continue;
-		}
-		if (!strcmp (current_name, ".text")) //The part with the code
-		{
-			text_offset = section_table [loop].sh_offset;
-			text_addr = section_table [loop].sh_addr;
-			end_of_text = text_offset + section_table [loop].sh_size;
-			if (text_offset < 0 || text_offset > file_size || end_of_text < 0 || end_of_text > file_size || (unsigned long long)text_offset > (unsigned long long)file_buf + file_size || text_offset > end_of_text)
-			{
-				printf ("CRITICAL ERROR: Malformed .text section\n");
-				exit (1);
-			}
 		}
 		if (!strcmp (current_name, ".symtab")) //Contains "symbols" for the program.
 		{
@@ -130,9 +116,6 @@ void parse_sections64 (void)
 	char* current_name;
 	unsigned int current_offset;
 
-	text_offset = 0;
-	text_addr = 0;
-	end_of_text = 0;
 	symbol_table.arch2 = 0;
 	symbol_table_end.arch2 = 0;
 	string_table = 0;
@@ -148,17 +131,6 @@ void parse_sections64 (void)
 		{
 			printf ("ERROR: Section number %d is malformed. Skipping...\n", loop);
 			continue;
-		}
-		if (!strcmp (current_name, ".text")) //The part with the code
-		{
-			text_offset = section_table [loop].sh_offset;
-			text_addr = section_table [loop].sh_addr;
-			end_of_text = text_offset + section_table [loop].sh_size;
-			if (text_offset < 0 || text_offset > file_size || end_of_text < 0 || end_of_text > file_size || (unsigned long long)text_offset > (unsigned long long)file_buf + file_size || text_offset > end_of_text)
-			{
-				printf ("CRITICAL ERROR: Malformed .text section\n");
-				exit (1);
-			}
 		}
 		if (!strcmp (current_name, ".symtab")) //Contains "symbols" for the program.
 		{
@@ -395,6 +367,53 @@ unsigned int index_to_addr (int index)
 	return index+base_addr;
 }
 
+void get_text (void)
+{
+	text_addr = entry_point;
+	text_offset = addr_to_index (text_addr);
+	Elf32_Phdr* segment_table = (Elf32_Phdr*)(file_buf + ((Elf32_Ehdr*)file_buf)->e_phoff);
+	int i;
+
+	for (i = 0; i < ((Elf32_Ehdr*)file_buf)->e_phnum; i ++)
+	{
+		if (segment_table [i].p_vaddr <= text_addr && segment_table [i].p_vaddr + segment_table [i].p_memsz > text_addr)
+		{
+			end_of_text = segment_table [i].p_vaddr + segment_table [i].p_memsz;
+			break;
+		}
+	}
+
+	if (i >= ((Elf32_Ehdr*)file_buf)->e_phnum)
+	{
+		printf ("ERROR: entry point not in loadable segment\n");
+		exit (-1);
+	}
+}
+
+void get_text64 (void)
+{
+	text_addr = entry_point;
+	text_offset = addr_to_index (text_addr);
+	Elf64_Phdr* segment_table = (Elf64_Phdr*)(file_buf + ((Elf64_Ehdr*)file_buf)->e_phoff);
+	int i;
+
+	for (i = 0; i < ((Elf64_Ehdr*)file_buf)->e_phnum; i ++)
+	{
+		if (segment_table [i].p_vaddr <= text_addr && segment_table [i].p_vaddr + segment_table [i].p_memsz > text_addr)
+		{
+			end_of_text = segment_table [i].p_vaddr + segment_table [i].p_memsz;
+			break;
+		}
+	}
+
+	if (i >= ((Elf64_Ehdr*)file_buf)->e_phnum)
+	{
+		printf ("ERROR: entry point not in loadable segment\n");
+		exit (-1);
+	}
+}
+
+
 //Initialize some globals that have to deal with the ELF we're reading
 //Note: this must be called whether or not you're actually using the parser
 void init_elf_parser (char* file_name)
@@ -458,6 +477,8 @@ void init_elf_parser (char* file_name)
 		string_table = NULL;
 
 		get_dyn_syms ();
+		get_entry_point ();
+		get_text ();
 	}
 	else if (architecture == ELFCLASS64)
 	{
@@ -485,6 +506,8 @@ void init_elf_parser (char* file_name)
 		string_table = NULL;
 
 		get_dyn_syms64 ();
+		get_entry_point64 ();
+		get_text64 ();
 	}
 	else
 	{
@@ -502,7 +525,6 @@ void parse_elf (char* file_name)
 		get_num_sections ();
 		get_section_names ();
 		parse_sections ();
-		get_entry_point ();
 		find_main ();
 	}
 	else
@@ -510,7 +532,6 @@ void parse_elf (char* file_name)
 		get_num_sections64 ();
 		get_section_names64 ();
 		parse_sections64 ();
-		get_entry_point64 ();
 		find_main64 ();
 	}
 }

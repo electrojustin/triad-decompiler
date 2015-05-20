@@ -7,7 +7,7 @@
 
 char num_push_ebp = 0;
 
-jump_block* init_jump_block (jump_block* to_init, unsigned int start_addr)
+jump_block* init_jump_block (jump_block* to_init, unsigned int start_addr, unsigned int stop_addr)
 {
 	to_init->instructions = NULL;
 	to_init->calls = NULL;
@@ -85,7 +85,7 @@ jump_block* init_jump_block (jump_block* to_init, unsigned int start_addr)
 		//Keep track of how many times we've seen the instruction "push %ebp". One too many and we've started on the adjacent function.
 		if ((instruction->id >= X86_INS_PUSH && instruction->id <= X86_INS_PUSHFQ) && (instruction->detail->x86.operands [0].reg == X86_REG_EBP || instruction->detail->x86.operands [0].reg == X86_REG_RBP))
 			num_push_ebp ++;
-		if (instruction->address > file_size) //If we're outside the text section, we should be done.
+		if (current_addr > stop_addr) //If we're outside the text section, we should be done.
 			num_push_ebp = 2;
 	//Stop disassembly of jump block at next unconditional jump or call
 	} while (instruction->mnemonic [0] != 'j' && num_push_ebp != 2); //Jump block ends on jump or return

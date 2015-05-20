@@ -15,7 +15,8 @@ First, it will be necessary to build triad. "make triad" should suffice.
 After its components are built, the triad binary will be placed in the build 
 directory. To copy the binary into /usr/bin, simply use "sudo make install."
 
-Usage: triad <flags> <file name> <(optional)start address>
+Usage: triad <flags> <file name> <(optional)start address> 
+<(optional) cutoff address>
 
 Simply run the triad binary from the command line and specify an ELF to 
 decompile as a parameter. By default, triad will try to find the main function 
@@ -25,6 +26,11 @@ Sometimes ELFs have all symbols stripped, so triad will be unable to find main.
 In such a scenario, the user may simply specify a starting address as the second
 command line parameter. But, an incorrect starting address will likely result in
 incorrect decompilation or no decompilation.
+
+Occasionally it is ambiguous as to where a function actually ends. If a user
+thinks he/she knows better where a particular function ends than triad and has
+specified a start address, he/she can specify a cutoff address. The default
+cutoff address is the end of the segment containing the entry point.
 
 Triad has the ability to follow function calls and automatically decompile
 callees. This is especially helpful when dealing with stripped binaries or other

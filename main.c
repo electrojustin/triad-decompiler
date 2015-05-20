@@ -11,6 +11,8 @@ int main (int argc, char** argv)
 	int j;
 	char* file_name = NULL;
 	char* beginning_address_string = NULL;
+	char* cutoff_address_string = NULL;
+	unsigned int stop_addr;
 	char follow_calls = 1;
 	language_flag = 'f';
 	constant_format [0] = '%';
@@ -52,6 +54,8 @@ int main (int argc, char** argv)
 			file_name = argv [i];
 		else if (beginning_address_string == NULL)
 			beginning_address_string = argv [i];
+		else if (cutoff_address_string == NULL)
+			cutoff_address_string = argv [i];
 		else
 		{
 			printf ("Unrecognized option \"%s\"\n", argv [i]);
@@ -86,8 +90,14 @@ int main (int argc, char** argv)
 		}
 		cs_option (handle, CS_OPT_DETAIL, CS_OPT_ON);
 		beginning_address = strtoul (beginning_address_string, NULL, 16);
+
+		if (cutoff_address_string)
+			stop_addr = strtoul (cutoff_address_string, NULL, 16);
+		else
+			stop_addr = end_of_text;
+
 		if (beginning_address)
-			func = init_function (malloc (sizeof (function)), beginning_address);
+			func = init_function (malloc (sizeof (function)), beginning_address, stop_addr);
 		else
 			printf ("Error: invalid start address\n");
 	}
@@ -109,8 +119,15 @@ int main (int argc, char** argv)
 				exit (-1);
 			}
 		}
+
 		cs_option (handle, CS_OPT_DETAIL, CS_OPT_ON);
-		func = init_function (malloc (sizeof (function)), main_addr);
+
+		if (cutoff_address_string)
+			stop_addr = strtoul (cutoff_address_string, NULL, 16);
+		else
+			stop_addr = end_of_text;
+
+		func = init_function (malloc (sizeof (function)), main_addr, stop_addr);
 	}
 	else
 	{

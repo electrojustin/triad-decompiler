@@ -16,6 +16,7 @@ struct function
 	size_t jump_addrs_buf_size;
 	int num_jump_addrs;
 	unsigned int start_addr;
+	unsigned int stop_addr;
 };
 typedef struct function function;
 
@@ -29,8 +30,8 @@ struct splice_params //Throwaway parameter structure for splicing together vario
 	int* calls_index;
 };
 
-function* init_function (function* to_init, unsigned int start_addr);
-void split_jump_blocks (jump_block* to_split, unsigned int addr);
+function* init_function (function* to_init, unsigned int start_addr, unsigned int stop_addr);
+void split_jump_blocks (jump_block* to_split, unsigned int addr, unsigned int stop_addr);
 void resolve_calls_help (jump_block* benefactor, function* parent);
 void resolve_calls (function* benefactor);
 void cleanup_function (function* to_cleanup, char scrub_insn);

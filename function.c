@@ -3,9 +3,10 @@
 #include "function.h"
 #include "datastructs.h"
 
-function* init_function (function* to_init, unsigned int start_addr)
+function* init_function (function* to_init, unsigned int start_addr, unsigned int stop_addr)
 {
 	to_init->start_addr = start_addr;
+	to_init->stop_addr = stop_addr;
 	next_flags = 0;
 
 	//The following is code meant for the spider disassembler (currently inoperational)
@@ -14,13 +15,13 @@ function* init_function (function* to_init, unsigned int start_addr)
 	jump_block* current;
 	jump_block* temp;
 
-	root = init_jump_block (malloc (sizeof (jump_block)), start_addr);
+	root = init_jump_block (malloc (sizeof (jump_block)), start_addr, stop_addr);
 	current = root;
 
 	//Find all jump blocks
 	while (num_push_ebp != 2)
 	{
-		temp = init_jump_block (malloc (sizeof (jump_block)), current->end);
+		temp = init_jump_block (malloc (sizeof (jump_block)), current->end, stop_addr);
 		link (current, temp);
 		current = current->next;
 	}
@@ -57,7 +58,7 @@ function* init_function (function* to_init, unsigned int start_addr)
 			continue;
 		}
 	
-		split_jump_blocks (current, params.key);
+		split_jump_blocks (current, params.key, stop_addr);
 	}
 
 	to_init->jump_block_list = root;
@@ -128,7 +129,7 @@ void resolve_calls_help (jump_block* benefactor, function* parent)
 				continue;
 			if (addr_to_index (benefactor->calls [i]) >= file_size) //Critical error: should not call outside of address space
 				continue;
-			to_link = init_function (malloc (sizeof (function)), benefactor->calls [i]);
+			to_link = init_function (malloc (sizeof (function)), benefactor->calls [i], parent->stop_addr);
 			link (parent, to_link);
 		}
 	}
@@ -147,7 +148,7 @@ void resolve_calls (function* benefactor)
 	} while (benefactor != start && benefactor);
 }
 
-void split_jump_blocks (jump_block* to_split, unsigned int addr)
+void split_jump_blocks (jump_block* to_split, unsigned int addr, unsigned int stop_addr)
 {
 	if (to_split->start == addr)
 		return;
@@ -165,7 +166,7 @@ void split_jump_blocks (jump_block* to_split, unsigned int addr)
 		return;
 	}
 
-	new_block = init_jump_block (malloc (sizeof (jump_block)), to_split->instructions [i].address + to_split->start);
+	new_block = init_jump_block (malloc (sizeof (jump_block)), to_split->instructions [i].address + to_split->start, stop_addr);
 
 	for (j = i; j < to_split->num_instructions; j ++)
 		free (to_split->instructions [j].detail);

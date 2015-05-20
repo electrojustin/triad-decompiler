@@ -58,3 +58,5 @@ unsigned int index_to_addr (int index);
 void init_elf_parser (char* file_name);
 void get_dyn_syms (void);
 void get_dyn_syms64 (void);
+void get_text (void);
+void get_text64 (void);
