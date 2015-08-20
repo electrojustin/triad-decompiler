@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 
 #include "elf_parser.h"
 
