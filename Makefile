@@ -1,4 +1,4 @@
-mrproper: triad sys_tests sys_tests64 clean clean_tests
+mrproper: triad clean
 debug:
 	make -C src debug
 triad: 
