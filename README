@@ -10,6 +10,7 @@ take in ELF files as input and spit out pseudo-C.
 Installation:
 Triad requires Capstone to be installed first.
 http://www.capstone-engine.org/
+For 32 bit tests, gcc-multilib is also required.
 
 First, it will be necessary to build triad. "make triad" should suffice.
 After its components are built, the triad binary will be placed in the build 
