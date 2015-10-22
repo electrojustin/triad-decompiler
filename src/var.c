@@ -29,7 +29,10 @@ char* gen_var_name (void)
 		{
 			name_ind ++; //Add one letter
 			if (name_ind == 19) //We've used far too many names (26^18 names)
-				exit (1);
+			{
+				printf ("Error: Too many variables\n");
+				exit (-1);
+			}
 			for (i=0; i <= name_ind; i++)
 				last_name [i] = 'a';
 			break;

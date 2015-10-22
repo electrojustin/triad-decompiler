@@ -5,15 +5,13 @@
 
 function* init_function (function* to_init, unsigned int start_addr, unsigned int stop_addr)
 {
-	to_init->start_addr = start_addr;
-	to_init->stop_addr = stop_addr;
-	next_flags = 0;
-
-	//The following is code meant for the spider disassembler (currently inoperational)
-	//See spider.c
 	jump_block* root;
 	jump_block* current;
 	jump_block* temp;
+
+	to_init->start_addr = start_addr;
+	to_init->stop_addr = stop_addr;
+	next_flags = 0;
 
 	root = init_jump_block (malloc (sizeof (jump_block)), start_addr, stop_addr);
 	current = root;

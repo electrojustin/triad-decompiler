@@ -90,7 +90,7 @@ jump_block* init_jump_block (jump_block* to_init, unsigned int start_addr, unsig
 	//Stop disassembly of jump block at next unconditional jump or call
 	} while (instruction->mnemonic [0] != 'j' && num_push_ebp != 2); //Jump block ends on jump or return
 
-	//Synchronize the jump block with locals
+	//Synchronize the newly created jump block datastructure fields with locals
 	to_init->end = current_addr;
 	to_init->num_conditional_jumps = num_conditional_jumps;
 	to_init->num_calls = num_calls;
